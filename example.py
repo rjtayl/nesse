@@ -4,8 +4,13 @@ import sys
 sys.path.append(os.getcwd()+"/src/")
 import nessie
 
+#example/testing of basic functionality
+
 def main():
     #import G4 events
+    events_filename = "config/Events/e-_800keV_0inc.root"
+    Events = nessie.eventsFromG4root(events_filename)
+    print("%d events loaded" %(len(Events)))
 
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_Base4e7Linear0-150V.h5"
@@ -17,6 +22,7 @@ def main():
     print(wp,Ex)
 
     #create simulation
+    sim = nessie.Simulation("Example_sim", np.array([Ex,Ey,Ez]), wp)
 
     #simulate events
 

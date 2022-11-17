@@ -1,12 +1,12 @@
 class Event:
     def __init__(self, _id, _pos, _dE, _t0):
-        ID = _id
-        pos = _pos
-        dE = _dE
-        t0 = _t0
+        self.ID = _id
+        self.pos = _pos
+        self.dE = _dE
+        self.t0 = _t0
 
-        dQ = []
-        dI = []
+        self.dQ = []
+        self.dI = []
 
 def eventsFromG4root(filename):
     import uproot
@@ -15,8 +15,13 @@ def eventsFromG4root(filename):
     file = uproot.open(filename)
     tree = file["ntuple/hits"]
 
-    df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep"], library="pd")
-    gdf = df.groupby("eventID")
+    try:
+        df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep"], library="pd")
+        gdf = df.groupby("eventID")
+    except:
+        #old formatting exception
+        df = tree.arrays(["iD", "x", "y", "z", "time", "eDep"], library="pd")
+        gdf = df.groupby("iD")
 
     events = []
     for eID, group in gdf:

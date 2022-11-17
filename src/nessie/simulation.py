@@ -1,6 +1,12 @@
 class Simulation:
-    def __init__(self, _name):
-        name = _name
+    def __init__(self, _name, _electricFields=None, _weightingPotential=None, 
+                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None):        
+        self.name = _name
+        self.electricFields = _electricFields
+        self.weightingPotential = _weightingPotential
+        self.cceField = _cceField
+        self.chargeCaptureField = _chargeCaptureField
+        self.electronicResponse = _electronicResponse
 
     def setElectricField(self):
         return None

@@ -14,7 +14,7 @@ class Field:
 def wpFromH5(filename, SSD=True):
     import h5py
     f = h5py.File(filename, 'r')
-    data = np.array(f["data"])
+    data = np.array(f["wp"])
     if SSD: data = np.rot90(data,axes=(0,2))
     boundsx = np.array(f["boundsx"])
     boundsy = np.array(f["boundsy"])

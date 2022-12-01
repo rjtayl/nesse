@@ -21,6 +21,10 @@ def main():
     weightingPotential = nessie.weightingPotentialFromH5(WP_filename)
 
     print(weightingPotential,Efield)
+    
+    #plot fields
+    nessie.plot_field_lines(Efield, Efield.bounds,x_plane=True, density=2)
+    
     #Note that the bounds should be the same but not necessarily the grid size. 
     
     
@@ -34,7 +38,7 @@ def main():
     #simulate events (work in progress)
     
     #simulate without diffusion
-    i=1
+    i=0
     #sim.simulate([Events[i]], stepLimit=1000)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     

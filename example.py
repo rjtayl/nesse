@@ -3,6 +3,7 @@ import os
 import sys
 sys.path.append(os.getcwd()+"/src/")
 import nessie
+import numpy as np
 
 #example/testing of basic functionality
 
@@ -16,21 +17,38 @@ def main():
     EF_filename = "config/Fields/NessieEF_Base4e7Linear0-150V.h5"
     WP_filename = "config/Fields/NessieWP_Base4e7Linear0-150V.h5"
 
-    Ex,Ey,Ez=nessie.efFromH5(EF_filename)
-    wp = nessie.wpFromH5(WP_filename)
+    Efield=nessie.eFieldFromH5(EF_filename)
+    weightingPotential = nessie.weightingPotentialFromH5(WP_filename)
 
-    print(wp,Ex)
-
+    print(weightingPotential,Efield)
+    #Note that the bounds should be the same but not necessarily the grid size. 
+    
+    
     #create simulation
-    sim = nessie.Simulation("Example_sim", np.array([Ex,Ey,Ez]), wp)
-
-    #simulate events
-
+    sim = nessie.Simulation("Example_sim", Efield, weightingPotential)
+    sim.setTemp(125)
+    bounds = np.stack((Efield.bounds[0],Efield.bounds[1],[0,0.002]))
+    sim.setBounds(bounds)
+    sim.setWeightingField()
+    
+    #simulate events (work in progress)
+    
+    #simulate without diffusion
+    i=1
+    #sim.simulate([Events[i]], stepLimit=1000)
+    #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
+    
+    #simulate with diffusion
+    sim.simulate([Events[i]],eps=1e-6, stepLimit=10000,diffusion=True)
+    nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
+    
     #electronics
 
     #downsampling
 
     #add noise
 
+    print("Done")
+    
 if __name__ == "__main__":
     main()

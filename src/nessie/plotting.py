@@ -11,11 +11,22 @@ def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True):
     fig = plt.figure()
     ax = plt.axes(projection ='3d')
     
-    for i in range(len(event.pos_drift)):
-        x = event.pos_drift[i][:,0]
-        y = event.pos_drift[i][:,1]
-        z = event.pos_drift[i][:,2]
-        ax.plot3D(x, y, z, 'green')
+    try:
+	    for i in range(len(event.pos_drift_e)):
+	        x = event.pos_drift_e[i][:,0]
+	        y = event.pos_drift_e[i][:,1]
+	        z = event.pos_drift_e[i][:,2]
+	        ax.plot3D(x, y, z, 'green')
+    except: print("No electron drift paths")
+	
+    try:
+        for i in range(len(event.pos_drift_h)):
+            x = event.pos_drift_h[i][:,0]
+            y = event.pos_drift_h[i][:,1]
+            z = event.pos_drift_h[i][:,2]
+            ax.plot3D(x, y, z, 'red')
+    except: print("No hole drift paths")
+	
     
     ax.set_xlabel('X')
     ax.set_ylabel('Y')

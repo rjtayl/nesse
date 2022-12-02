@@ -8,12 +8,19 @@ class Event:
         self.dQ = []
         self.dI = []
         
-        self.pos_drift=[]
-        self.times_drift=[]
+        self.pos_drift_e = None
+        self.times_drift_e = None
         
-    def setDriftPaths(self, pos, times):
-        self.pos_drift = pos
-        self.times_drift=times
+        self.pos_drift_h = None
+        self.times_drift_h = None
+        
+    def setDriftPaths(self, pos, times, electron=True):
+        if electron:
+            self.pos_drift_e = pos
+            self.times_drift_e = times
+        else:
+            self.pos_drift_h = pos
+            self.times_drift_h = times
         return None
         
     def convertUnits(self, lengthConversionFactor, timeConversionFactor):

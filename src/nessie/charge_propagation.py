@@ -33,7 +33,7 @@ def updateQuasiparticles(objects, dt, extField = np.zeros(DIMENSIONS), temp=300)
         objects[i].addVel(dv)
         objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
 
-def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, stepLimit=None):
+def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, stepLimit=None, electron=True):
     
     x = [x0, ]
     y = [y0, ]
@@ -48,10 +48,15 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
         Ex = Ex_i([x[-1], y[-1], z[-1]])[0]
         Ey = Ey_i([x[-1], y[-1], z[-1]])[0]
         Ez = Ez_i([x[-1], y[-1], z[-1]])[0]
-        mu = generalized_mobility_el(T, NI(x[-1], y[-1], z[-1]), E)
+        
+        if electron:
+        	mu = generalized_mobility_el(T, NI(x[-1], y[-1], z[-1]), E)
+        else:
+        	mu = mu0_h(T)
+        	
         if d == None:
             #d_temp = D(T, NI(x[-1], y[-1], z[-1]), E)
-            d_temp = diffusion_electron(T)
+            d_temp = diffusion_electron(T) if electron else diffusion_hole(T)
         else:
             d_temp = d
         
@@ -62,13 +67,12 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
         if abs(E) > 0:
             dt = min(min(eps/mu/E, tauTrap(x[-1], y[-1], z[-1])/1e5),(bounds[2][1]-z[-1])/mu/np.abs(Ez)+1e-10) #Time step needs to be significantly smaller than trapping time for Poisson process to make sense 
             
-            dx = -dt*mu*Ex
-            dy = -dt*mu*Ey
-            dz = -dt*mu*Ez
+            sign = -1 if electron else 1
+            dx = sign*dt*mu*Ex
+            dy = sign*dt*mu*Ey
+            dz = sign*dt*mu*Ez
             dr = np.sqrt(dx**2+dy**2+dz**2)
             
-            #print(eps/mu/E,tauTrap(x[-1], y[-1], z[-1])/1e5, ((bounds[2][1]-z[-1])/mu/Ez)+1e-10)
-            #print((bounds[2][1]-z[-1]))
             #print(dt, dz)
             angle = np.arctan(dy/dx)
             phi = np.arccos(dz/dr)

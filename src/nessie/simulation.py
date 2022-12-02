@@ -72,12 +72,21 @@ class Simulation:
         for event in events:
             new_pos = []
             new_times = []
+            new_pos_h = []
+            new_times_h = []
             for i in range(len(event.pos)):
                 print(i)
                 x,y,z,t = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
                                         eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion)
                 new_pos.append(np.stack((x,y,z), axis=-1))
                 new_times.append(t)
+            
+                x_h,y_h,z_h,t_h = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
+                                        eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion,electron=False)
+                new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
+                new_times_h.append(t_h)
+                
             event.setDriftPaths(new_pos,new_times)
-        
+            event.setDriftPaths(new_pos_h,new_times_h,electron=False)
+            
         return None

@@ -53,7 +53,7 @@ def plot_field_lines(field, bounds, mesh_size = (500,500), x_plane = True, densi
         #print(np.shape(X), np.shape(Z))
         #print(fieldy_interp([0,X,Z]))
         coords = np.stack((X,Y,Z),axis=-1)
-        Ex, Ez = fieldy_interp(coords), fieldz_interp(coords)
+        Ex, Ey, Ez = fieldy_interp(coords), fieldz_interp(coords), fieldz_interp(coords)
     else:
         #E = lambda x,z:fieldy_interp([x,0,z]),fieldz_interp([x,0,z])
         i = np.linspace(bounds[0][0], bounds[0][1], ni)
@@ -61,19 +61,19 @@ def plot_field_lines(field, bounds, mesh_size = (500,500), x_plane = True, densi
         X, Z = np.meshgrid(i,j)
         Y = np.zeros((ni,nj))
         coords = np.stack((X,Y,Z),axis=-1)
-        Ex, Ez = fieldy_interp(coords), fieldz_interp(coords)
+        Ex, Ey, Ez = fieldy_interp(coords),fieldy_interp(coords), fieldz_interp(coords)
     
     
     
     
     
-    color = 2 * np.log(np.hypot(Ex, Ez))
+    color = np.sqrt(Ex**2+Ey**2+Ez**2)
     
     fig, ax = plt.subplots()
     
     strm = ax.streamplot(i, j, Ex, Ez, color=color, linewidth=1, cmap=plt.cm.inferno,
               density=density, arrowstyle='->', arrowsize=1.5)
-    fig.colorbar(strm.lines)
+    fig.colorbar(strm.lines, label="Electric Field Magnitude (V/m)")
               
     xlabel = "y" if x_plane else "x"          
     ax.set_xlabel(xlabel) 

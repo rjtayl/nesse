@@ -53,7 +53,7 @@ class Simulation:
     def setElectronicResponse(self):
         return None
 
-    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, stepLimit=1000):
+    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, stepLimit=1000, d=None):
         eFieldBounds = self.electricField.bounds
         eFieldShape = np.shape(self.electricField.fieldx)
         x = np.linspace(eFieldBounds[0][0],eFieldBounds[0][1],eFieldShape[0])
@@ -75,7 +75,7 @@ class Simulation:
             for i in range(len(event.pos)):
                 print(i)
                 x,y,z,t = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
-                                        eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=36e-4, stepLimit=stepLimit)
+                                        eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion)
                 new_pos.append(np.stack((x,y,z), axis=-1))
                 new_times.append(t)
             event.setDriftPaths(new_pos,new_times)

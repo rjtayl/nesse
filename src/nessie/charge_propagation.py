@@ -44,10 +44,10 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
             & (z[-1] >= bounds[2][0]) & (z[-1] <= bounds[2][1]) and len(t)<stepLimit):
         #print(len(t), len(t)<stepLimit)
         #print(x[-1], y[-1], z[-1])
-        E = E_i([x[-1], y[-1], z[-1]])
-        Ex = Ex_i([x[-1], y[-1], z[-1]])
-        Ey = Ey_i([x[-1], y[-1], z[-1]])
-        Ez = Ez_i([x[-1], y[-1], z[-1]])
+        E = E_i([x[-1], y[-1], z[-1]])[0]
+        Ex = Ex_i([x[-1], y[-1], z[-1]])[0]
+        Ey = Ey_i([x[-1], y[-1], z[-1]])[0]
+        Ez = Ez_i([x[-1], y[-1], z[-1]])[0]
         mu = generalized_mobility_el(T, NI(x[-1], y[-1], z[-1]), E)
         if d == None:
             #d_temp = D(T, NI(x[-1], y[-1], z[-1]), E)
@@ -60,15 +60,18 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
         dz = 0
         
         if abs(E) > 0:
-            dt = min(min(eps/mu/E, tauTrap(x[-1], y[-1], z[-1])/1e5),(bounds[2][1]-z[-1])/mu/Ez+1e-10) #Time step needs to be significantly smaller than trapping time for Poisson process to make sense 
-            dx = (dt*mu*Ex)[0]
-            dy = (dt*mu*Ey)[0]
-            dz = (dt*mu*Ez)[0]
+            dt = min(min(eps/mu/E, tauTrap(x[-1], y[-1], z[-1])/1e5),(bounds[2][1]-z[-1])/mu/np.abs(Ez)+1e-10) #Time step needs to be significantly smaller than trapping time for Poisson process to make sense 
+            
+            dx = -dt*mu*Ex
+            dy = -dt*mu*Ey
+            dz = -dt*mu*Ez
             dr = np.sqrt(dx**2+dy**2+dz**2)
             
-            #print(dt, dy)
-            #angle = np.arctan(dy/dx)
-            #phi = np.arccos(dz/dr)
+            #print(eps/mu/E,tauTrap(x[-1], y[-1], z[-1])/1e5, ((bounds[2][1]-z[-1])/mu/Ez)+1e-10)
+            #print((bounds[2][1]-z[-1]))
+            #print(dt, dz)
+            angle = np.arctan(dy/dx)
+            phi = np.arccos(dz/dr)
         else:
             dt = tauTrap(x[-1], y[-1], z[-1])/1e5
             angle = 0
@@ -83,10 +86,11 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
         dxd = 0
         dyd = 0
         dzd = 0
-        if diffusion and d_temp != 0:
+       
+        if (diffusion and d_temp != 0):
                 dxd, dyd, dzd = getDriftStep(angle, d_temp, dt)
         
-        #print("diffusion", dxd, dyd)
+        #print("diffusion", dxd, dyd, dzd, dt)
         
         x.append(x[-1] + dx+dxd)
         y.append(y[-1] + dy+dyd)

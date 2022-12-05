@@ -89,7 +89,7 @@ class Simulation:
         if self.weightingField is None: setWeightingField(self)
         
         for event in events:
-            event.calculateInducedCurrent(self.weightingField, 1e-9)
+            event.calculateInducedCurrent(self.weightingField, 0.1e-9)
                 
         
             

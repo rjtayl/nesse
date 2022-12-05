@@ -39,12 +39,12 @@ def main():
     #simulate events (work in progress)
     
     #simulate without diffusion
-    i=0
-    sim.simulate(Events[:10], stepLimit=1000)
+    i=1
+    sim.simulate(Events[:i], stepLimit=1000,eps=1e-6)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #simulate with diffusion
-    #sim.simulate(Events[:10],eps=1e-5, stepLimit=1000, diffusion=True)
+    #sim.simulate(Events[:i],eps=1e-5, stepLimit=1000, diffusion=True)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
     
     for event in Events:

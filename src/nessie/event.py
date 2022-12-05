@@ -68,7 +68,7 @@ class Event:
                      weightingFieldy_interp(self.pos_drift_e[i][j]),
                      weightingFieldz_interp(self.pos_drift_e[i][j])])[0] for j in range(len(self.vel_drift_e[i]))]
             
-            times = self.times_drift_e[i][:-1]
+            times = self.times_drift_e[i][:-1] + self.times[i]
             
             if len(Is)>1:
                 func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
@@ -82,7 +82,7 @@ class Event:
                      weightingFieldy_interp(self.pos_drift_h[i][j]),
                      weightingFieldz_interp(self.pos_drift_h[i][j])])[0] for j in range(len(self.vel_drift_h[i]))]
             
-            times = self.times_drift_h[i][:-1]
+            times = self.times_drift_h[i][:-1]+ self.times[i]
             
             #print(len(times),len(Is))  
           
@@ -115,7 +115,7 @@ def eventsFromG4root(filename):
     events = []
     for eID, group in gdf:
         event = Event(eID, group[["x", "y", "z"]].to_numpy(), group["eDep"].to_numpy(), group["time"].to_numpy())
-        event.convertUnits(1e-3,1)
+        event.convertUnits(1e-3,1e-9)
         events.append(event)
     return events
     

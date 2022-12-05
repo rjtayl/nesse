@@ -4,6 +4,7 @@ import sys
 sys.path.append(os.getcwd()+"/src/")
 import nessie
 import numpy as np
+import matplotlib.pyplot as plt
 
 #example/testing of basic functionality
 
@@ -23,7 +24,7 @@ def main():
     print(weightingPotential,Efield)
     
     #plot fields
-    nessie.plot_field_lines(Efield, Efield.bounds,x_plane=True, density=2, show_plot=False)
+    #nessie.plot_field_lines(Efield, Efield.bounds,x_plane=True, density=2, show_plot=False)
     
     #Note that the bounds should be the same but not necessarily the grid size. 
     
@@ -39,12 +40,16 @@ def main():
     
     #simulate without diffusion
     i=0
-    #sim.simulate([Events[i]], stepLimit=1000)
+    sim.simulate(Events[:10], stepLimit=1000)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #simulate with diffusion
-    sim.simulate([Events[i]],eps=1e-6, stepLimit=10000, diffusion=True)
-    nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
+    #sim.simulate(Events[:10],eps=1e-5, stepLimit=1000, diffusion=True)
+    #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
+    
+    for event in Events:
+        plt.plot(event.dt,event.dI, alpha=0.2)
+    plt.show()
     
     #electronics
 

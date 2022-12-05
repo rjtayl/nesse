@@ -54,28 +54,20 @@ class Simulation:
         return None
 
     def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, stepLimit=1000, d=None):
-        eFieldBounds = self.electricField.bounds
-        eFieldShape = np.shape(self.electricField.fieldx)
-        x = np.linspace(eFieldBounds[0][0],eFieldBounds[0][1],eFieldShape[0])
-        y = np.linspace(eFieldBounds[1][0],eFieldBounds[1][1],eFieldShape[1])
-        z = np.linspace(eFieldBounds[2][0],eFieldBounds[2][1],eFieldShape[2])
+    
+        # Get electric field interpolations
+        eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate()
         
-        eFieldx_interp  = RegularGridInterpolator((x,y,z),self.electricField.fieldx)
-        eFieldy_interp  = RegularGridInterpolator((x,y,z),self.electricField.fieldy)
-        eFieldz_interp  = RegularGridInterpolator((x,y,z),self.electricField.fieldz)
+        simBounds = self.bounds if self.bounds is not None else self.electricField.bounds
         
-        eFieldMag = np.sqrt(self.electricField.fieldx**2+self.electricField.fieldy**2+self.electricField.fieldz**2)
-        eFieldMag_interp = RegularGridInterpolator((x,y,z),eFieldMag)
-        
-        simBounds = self.bounds if self.bounds is not None else eFieldBounds
-        
+        #Find electron and hole drift paths for each event
         for event in events:
             new_pos = []
             new_times = []
             new_pos_h = []
             new_times_h = []
             for i in range(len(event.pos)):
-                print(i)
+                #print(i)
                 x,y,z,t = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
                                         eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion)
                 new_pos.append(np.stack((x,y,z), axis=-1))
@@ -88,5 +80,18 @@ class Simulation:
                 
             event.setDriftPaths(new_pos,new_times)
             event.setDriftPaths(new_pos_h,new_times_h,electron=False)
+            
+            #get drift velocities
+            event.getDriftVelocities()
+        
+        #get induced current
+        
+        if self.weightingField is None: setWeightingField(self)
+        
+        for event in events:
+            event.calculateInducedCurrent(self.weightingField, 1e-9)
+                
+        
+            
             
         return None

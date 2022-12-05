@@ -7,6 +7,11 @@ from scipy.interpolate import RegularGridInterpolator
 plt.rcParams['figure.figsize'] = [8, 5]
 plt.rcParams.update({'font.size': 18})
 
+def plot_signal(event, show_plot=True, alpha=1):
+    plt.plot(event.dt,event.dI, alpha=alpha)
+    if show_plot: plt.show()
+    return None
+
 def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True):
     fig = plt.figure()
     ax = plt.axes(projection ='3d')

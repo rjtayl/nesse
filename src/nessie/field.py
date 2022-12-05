@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator 
 
 class Potential:
     def __init__(self, _name, _data=None, _bounds=None):
@@ -21,6 +22,22 @@ class Field:
     def __str__(self):
         return ("Nessie Field object \n Name: %s \n Size: %s \n Bounds: %s \n"
                 % (self.name, np.shape(self.fieldx), self.bounds))
+                
+    def interpolate(self):
+        fieldBounds = self.bounds
+        fieldShape = np.shape(self.fieldx)
+        x = np.linspace(fieldBounds[0][0],fieldBounds[0][1],fieldShape[0])
+        y = np.linspace(fieldBounds[1][0],fieldBounds[1][1],fieldShape[1])
+        z = np.linspace(fieldBounds[2][0],fieldBounds[2][1],fieldShape[2])
+        
+        fieldx_interp  = RegularGridInterpolator((x,y,z),self.fieldx)
+        fieldy_interp  = RegularGridInterpolator((x,y,z),self.fieldy)
+        fieldz_interp  = RegularGridInterpolator((x,y,z),self.fieldz)
+        
+        fieldMag = np.sqrt(self.fieldx**2+self.fieldy**2+self.fieldz**2)
+        fieldMag_interp = RegularGridInterpolator((x,y,z),fieldMag)
+        
+        return fieldx_interp, fieldy_interp, fieldz_interp, fieldMag_interp
 
 #Import weighting potential from hdf5 file.
 def weightingPotentialFromH5(filename, rotate90=True):

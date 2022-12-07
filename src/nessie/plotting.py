@@ -79,10 +79,6 @@ def plot_field_lines(field, bounds, mesh_size = (500,500), x_plane = True, densi
         coords = np.stack((X,Y,Z),axis=-1)
         Ex, Ey, Ez = fieldy_interp(coords),fieldy_interp(coords), fieldz_interp(coords)
     
-    
-    
-    
-    
     color = np.sqrt(Ex**2+Ey**2+Ez**2)
     
     fig, ax = plt.subplots()
@@ -100,5 +96,42 @@ def plot_field_lines(field, bounds, mesh_size = (500,500), x_plane = True, densi
     if show_plot: plt.show()
     
     plt.savefig(prefix+"field" +suffix + ".png")
+    
+    return None
+    
+def plot_potential(potential, bounds, mesh_size = (500,500), x_plane = True,
+                        prefix="",suffix="", show_plot=True):
+    potentialBounds = potential.bounds
+    potentialShape = np.shape(potential.data)
+    x = np.linspace(potentialBounds[0][0],potentialBounds[0][1],potentialShape[0])
+    y = np.linspace(potentialBounds[1][0],potentialBounds[1][1],potentialShape[1])
+    z = np.linspace(potentialBounds[2][0],potentialBounds[2][1],potentialShape[2])
+        
+    potential_interp  = RegularGridInterpolator((x,y,z),potential.data)
+    
+    ni, nj = mesh_size[0], mesh_size[1]
+    
+    if x_plane:
+        i = np.linspace(bounds[1][0], bounds[1][1], ni)
+        j = np.linspace(bounds[2][0], bounds[2][1], nj)
+        Y, Z = np.meshgrid(i,j)
+        X = np.zeros((ni,nj))
+        coords = np.stack((X,Y,Z),axis=-1)
+        potentialGrid = potential_interp(coords)
+        plt.contourf(Y,Z,potentialGrid,mesh_size[0])
+    else:
+        i = np.linspace(bounds[0][0], bounds[0][1], ni)
+        j = np.linspace(bounds[2][0], bounds[2][1], nj)
+        X, Z = np.meshgrid(i,j)
+        Y = np.zeros((ni,nj))
+        coords = np.stack((X,Y,Z),axis=-1)
+        potentialGrid = potential_interp(coords)
+        plt.contourf(X,Z,potentialGrid,mesh_size[0])
+     
+    plt.contour(X,Z,potentialGrid)
+    
+    if show_plot: plt.show()
+    
+    plt.savefig(prefix+"potential" +suffix + ".png")
     
     return None

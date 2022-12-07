@@ -25,6 +25,7 @@ def main():
     
     #plot fields
     #nessie.plot_field_lines(Efield, Efield.bounds,x_plane=True, density=2, show_plot=False)
+    nessie.plot_potential(weightingPotential, Efield.bounds,x_plane=False, show_plot=True, mesh_size=(330,330))
     
     #Note that the bounds should be the same but not necessarily the grid size. 
     
@@ -40,7 +41,7 @@ def main():
     
     #simulate without diffusion
     i=1
-    sim.simulate(Events[:i], stepLimit=1000,eps=1e-6)
+    sim.simulate(Events[:i], stepLimit=1000,eps=1e-5)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #simulate with diffusion

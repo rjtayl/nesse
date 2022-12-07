@@ -77,7 +77,7 @@ class Event:
         for i in range(len(self.vel_drift_h)):
             #print(i)
             
-            Is = [-qe_SI*np.dot(self.vel_drift_h[i][j], 
+            Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
                     [weightingFieldx_interp(self.pos_drift_h[i][j]),
                      weightingFieldy_interp(self.pos_drift_h[i][j]),
                      weightingFieldz_interp(self.pos_drift_h[i][j])])[0] for j in range(len(self.vel_drift_h[i]))]

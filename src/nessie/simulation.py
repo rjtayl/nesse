@@ -2,6 +2,7 @@ import numpy as np
 from .field import *
 from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
+from tqdm import tqdm
 
 class Simulation:
     def __init__(self, _name, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
@@ -61,12 +62,15 @@ class Simulation:
         simBounds = self.bounds if self.bounds is not None else self.electricField.bounds
         
         #Find electron and hole drift paths for each event
-        for event in events:
+        print("drifting events:")
+        for i in range(len(events)):
+            print("Event %i" % (i))
+            event=events[i]
             new_pos = []
             new_times = []
             new_pos_h = []
             new_times_h = []
-            for i in range(len(event.pos)):
+            for i in tqdm(range(len(event.pos))):
                 #print(i)
                 x,y,z,t = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
                                         eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion)
@@ -85,6 +89,7 @@ class Simulation:
             event.getDriftVelocities()
         
         #get induced current
+        print("calculating induced current")
         
         if self.weightingField is None: setWeightingField(self)
         

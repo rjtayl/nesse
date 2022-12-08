@@ -5,6 +5,7 @@ sys.path.append(os.getcwd()+"/src/")
 import nessie
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
 
 #example/testing of basic functionality
 
@@ -27,23 +28,34 @@ def main():
     #nessie.plot_field_lines(Efield,x_plane=True, density=2, show_plot=False)
     #nessie.plot_potential(weightingPotential, Efield.bounds,x_plane=True, show_plot=True, mesh_size=(330,330))
     
-    #Note that the bounds should be the same but not necessarily the grid size. 
+    
+    
     
     
     #create simulation
     sim = nessie.Simulation("Example_sim", Efield, weightingPotential)
+    
+    #import electronic response from spice
+    spiceFile= "config/Spice/spice_step_New_1ns.csv"
+    sim.setElectronicResponse(spiceFile)
+    
+    #set temperature    
     sim.setTemp(125)
+    
+    #set e-h drift boundaries 
     ef_bounds = [[axis[0],axis[-1]] for axis in Efield.grid]
     bounds = np.stack((ef_bounds[0],ef_bounds[1],[0,0.002]))
     sim.setBounds(bounds)
+    
+    #calculate weighting field
     sim.setWeightingField()
     
     #nessie.plot_field_lines(sim.weightingField, Efield.bounds,x_plane=True, density=2, show_plot=True, log=False)
     
-    #simulate events (work in progress)
+    #simulate events
     
     #simulate without diffusion
-    i=10
+    i=5
     sim.simulate(Events[:i], stepLimit=1000,eps=1e-4)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
@@ -51,11 +63,15 @@ def main():
     #sim.simulate(Events[:i],eps=1e-4, stepLimit=1000, diffusion=True)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
     
-    for event in Events:
+    #plot induced current
+    for event in Events[:i]:
         plt.plot(event.dt,event.dI, alpha=0.2)
     plt.show()
     
-    #electronics
+    #plot spice signals
+    for event in Events[:i]:
+        plt.plot(event.signal_times,event.signal_I)
+    plt.show()
 
     #downsampling
 

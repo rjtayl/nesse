@@ -22,6 +22,21 @@ class Event:
         self.vel_drift_e = None
         self.vel_drift_h = None
         
+        self.signal_I = None
+        self.signal_times = None
+        
+    def convolveElectronicResponse(self, electronicResponse):
+        func_I = interp1d(self.dt, self.dI, bounds_error=False, fill_value=0)
+        temp_times = electronicResponse["times"]
+        dt = np.diff(temp_times)[0]
+        
+        self.signal_I = np.convolve(func_I(temp_times),electronicResponse["step"])
+        self.signal_times = np.arange(0,len(self.signal_I)*dt, dt)
+        
+        print(type(self.signal_I), type(self.signal_times))
+        
+        return None
+        
     def setDriftPaths(self, pos, times, electron=True):
         if electron:
             self.pos_drift_e = pos
@@ -68,7 +83,8 @@ class Event:
                      weightingFieldy_interp(self.pos_drift_e[i][j]),
                      weightingFieldz_interp(self.pos_drift_e[i][j])])[0] for j in range(len(self.vel_drift_e[i]))]
             
-            times = self.times_drift_e[i][:-1] + self.times[i]
+            #times = self.times_drift_e[i][:-1] + self.times[i]
+            times = self.times_drift_e[i][:-1]
             
             if len(Is)>1:
                 func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
@@ -82,7 +98,8 @@ class Event:
                      weightingFieldy_interp(self.pos_drift_h[i][j]),
                      weightingFieldz_interp(self.pos_drift_h[i][j])])[0] for j in range(len(self.vel_drift_h[i]))]
             
-            times = self.times_drift_h[i][:-1]+ self.times[i]
+            #times = self.times_drift_h[i][:-1] + self.times[i]
+            times = self.times_drift_h[i][:-1]
             
             #print(len(times),len(Is))  
           

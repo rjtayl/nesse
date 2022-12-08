@@ -3,6 +3,8 @@ from .field import *
 from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
 from tqdm import tqdm
+import csv
+from .silicon import *
 
 class Simulation:
     def __init__(self, _name, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
@@ -32,14 +34,17 @@ class Simulation:
         return None
     
     def setElectricField(self):
+        grid = self.electricPotential.grid
+        gradient = np.gradient(self.electricPotential.data, grid[0],grid[1],grid[2])
         try:
-            self.electricField = Field("Electric Field", np.gradient(self.electricPotential.data), self.electricPotential.gri)
+            self.electricField = Field("Electric Field", gradient[0],gradient[1],gradient[2], self.electricPotential.gri)
         except:
             print("No electric potential from which to calculate weighting field.")
         return None
 
     def setWeightingField(self):
-        gradient = np.gradient(self.weightingPotential.data)
+        grid = self.weightingPotential.grid
+        gradient = np.gradient(self.weightingPotential.data, grid[0],grid[1],grid[2])
         try:
             self.weightingField = Field("Weighting Field", gradient[0],gradient[1],gradient[2], self.weightingPotential.grid)
         except:
@@ -52,7 +57,15 @@ class Simulation:
     def setChargeCaptureField(self):
         return None
 
-    def setElectronicResponse(self):
+    def setElectronicResponse(self, spiceFile):
+        ts = []
+        step = []
+        with open(spiceFile,'r') as csvfile:
+            plots = csv.reader(csvfile, delimiter=',')
+            for row in plots:
+                ts.append(float(row[0])*1e-9) #convert from ns to s
+                step.append(float(row[1]))
+        self.electronicResponse = {"times":ts, "step":step}
         return None
 
     def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, stepLimit=1000, d=None):
@@ -73,15 +86,20 @@ class Simulation:
             new_times_h = []
             for i in tqdm(range(len(event.pos))):
                 #print(i)
-                x,y,z,t = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
-                                        eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion)
-                new_pos.append(np.stack((x,y,z), axis=-1))
-                new_times.append(t)
-            
-                x_h,y_h,z_h,t_h = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
-                                        eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion,electron=False)
-                new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
-                new_times_h.append(t_h)
+                
+                pairs = event.dE/Egap(self.temp)
+                
+                for pair in pairs:
+                
+                    x,y,z,t = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
+                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion)
+                    new_pos.append(np.stack((x,y,z), axis=-1))
+                    new_times.append(t)
+                
+                    x_h,y_h,z_h,t_h = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
+                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion,electron=False)
+                    new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
+                    new_times_h.append(t_h)
                 
             event.setDriftPaths(new_pos,new_times)
             event.setDriftPaths(new_pos_h,new_times_h,electron=False)
@@ -96,7 +114,10 @@ class Simulation:
         
         for event in events:
             event.calculateInducedCurrent(self.weightingField, 0.1e-9)
-                
+            
+        if self.electronicResponse is not None:
+                for event in events:
+                    event.convolveElectronicResponse(self.electronicResponse)
         
             
             

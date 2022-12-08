@@ -45,17 +45,13 @@ def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True):
     plt.savefig(prefix+"drift_path" +suffix + ".png")
     return None
     
-def plot_field_lines(field, bounds, mesh_size = (500,500), x_plane = True, density = 2,
-                        prefix="",suffix="", show_plot=True):
-    fieldBounds = field.bounds
-    fieldShape = np.shape(field.fieldx)
-    x = np.linspace(fieldBounds[0][0],fieldBounds[0][1],fieldShape[0])
-    y = np.linspace(fieldBounds[1][0],fieldBounds[1][1],fieldShape[1])
-    z = np.linspace(fieldBounds[2][0],fieldBounds[2][1],fieldShape[2])
-        
-    fieldx_interp  = RegularGridInterpolator((x,y,z),field.fieldx)
-    fieldy_interp  = RegularGridInterpolator((x,y,z),field.fieldy)
-    fieldz_interp  = RegularGridInterpolator((x,y,z),field.fieldz)
+def plot_field_lines(field, mesh_size = (500,500), x_plane = True, density = 2,
+                        prefix="",suffix="", show_plot=True, log=True, bounds=None):
+                        
+    fieldx_interp, fieldy_interp, fieldz_interp, fieldMag_interp = field.interpolate()
+    
+    if bounds is None:
+        bounds = [[axis[0],axis[-1]] for axis in field.grid]
     
     ni, nj = mesh_size[0], mesh_size[1]
     
@@ -79,7 +75,7 @@ def plot_field_lines(field, bounds, mesh_size = (500,500), x_plane = True, densi
         coords = np.stack((X,Y,Z),axis=-1)
         Ex, Ey, Ez = fieldy_interp(coords),fieldy_interp(coords), fieldz_interp(coords)
     
-    color = np.sqrt(Ex**2+Ey**2+Ez**2)
+    color = np.sqrt(Ex**2+Ey**2+Ez**2) if log else Ez
     
     fig, ax = plt.subplots()
     
@@ -99,14 +95,16 @@ def plot_field_lines(field, bounds, mesh_size = (500,500), x_plane = True, densi
     
     return None
     
-def plot_potential(potential, bounds, mesh_size = (500,500), x_plane = True,
-                        prefix="",suffix="", show_plot=True):
-    potentialBounds = potential.bounds
-    potentialShape = np.shape(potential.data)
-    x = np.linspace(potentialBounds[0][0],potentialBounds[0][1],potentialShape[0])
-    y = np.linspace(potentialBounds[1][0],potentialBounds[1][1],potentialShape[1])
-    z = np.linspace(potentialBounds[2][0],potentialBounds[2][1],potentialShape[2])
-        
+def plot_potential(potential, mesh_size = (500,500), x_plane = True,
+                        prefix="",suffix="", show_plot=True, bounds=None):
+                            
+    x = potential.grid[0]
+    y = potential.grid[1]
+    z = potential.grid[2]
+    
+    if bounds is None:
+        bounds = [[axis[0],axis[-1]] for axis in potential.grid]
+           
     potential_interp  = RegularGridInterpolator((x,y,z),potential.data)
     
     ni, nj = mesh_size[0], mesh_size[1]
@@ -127,8 +125,6 @@ def plot_potential(potential, bounds, mesh_size = (500,500), x_plane = True,
         coords = np.stack((X,Y,Z),axis=-1)
         potentialGrid = potential_interp(coords)
         plt.contourf(X,Z,potentialGrid,mesh_size[0])
-     
-    plt.contour(X,Z,potentialGrid)
     
     if show_plot: plt.show()
     

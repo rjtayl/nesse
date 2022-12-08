@@ -33,14 +33,15 @@ class Simulation:
     
     def setElectricField(self):
         try:
-            self.electricField = Field("Electric Field", *np.gradient(self.electricPotential.data), self.electricPotential.bounds)
+            self.electricField = Field("Electric Field", np.gradient(self.electricPotential.data), self.electricPotential.gri)
         except:
             print("No electric potential from which to calculate weighting field.")
         return None
 
     def setWeightingField(self):
+        gradient = np.gradient(self.weightingPotential.data)
         try:
-            self.weightingField = Field("Weighting Field", *np.gradient(self.weightingPotential.data), self.weightingPotential.bounds)
+            self.weightingField = Field("Weighting Field", gradient[0],gradient[1],gradient[2], self.weightingPotential.grid)
         except:
             print("No weighting potential from which to calculate weighting field.")
         return None
@@ -59,7 +60,7 @@ class Simulation:
         # Get electric field interpolations
         eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate()
         
-        simBounds = self.bounds if self.bounds is not None else self.electricField.bounds
+        simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
         
         #Find electron and hole drift paths for each event
         print("drifting events:")
@@ -91,7 +92,7 @@ class Simulation:
         #get induced current
         print("calculating induced current")
         
-        if self.weightingField is None: setWeightingField(self)
+        if self.weightingField is None: setWeightingField()
         
         for event in events:
             event.calculateInducedCurrent(self.weightingField, 0.1e-9)

@@ -7,13 +7,18 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 
+from src.nessie.event import *
+
 #example/testing of basic functionality
 
 def main():
     #import G4 events
     events_filename = "config/Events/e-_800keV_0inc.root"
     Events = nessie.eventsFromG4root(events_filename)
-    print("%d events loaded" %(len(Events)))
+    #print("%d events loaded" %(len(Events)))
+
+    #event = Event(0, np.array([[0, 0, 0],]), np.array([40, ]), np.array([0,]))
+    #Events = [event, None,]
 
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
@@ -55,13 +60,13 @@ def main():
     #simulate events
     
     #simulate without diffusion
-    i=5
-    sim.simulate(Events[:i], stepLimit=1000,eps=1e-4)
+    i=1
+    #sim.simulate(Events[:i], stepLimit=1000,eps=1e-4)
     #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #simulate with diffusion
-    #sim.simulate(Events[:i],eps=1e-4, stepLimit=1000, diffusion=True)
-    #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
+    sim.simulate(Events[:i],eps=1e-5, stepLimit=1000, diffusion=True)
+    nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
     
     #plot induced current
     for event in Events[:i]:

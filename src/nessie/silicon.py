@@ -1,6 +1,7 @@
 from .constants import *
 
 def Egap(T):
+    # Bandgap energy in eV
     a = 4.9e-4
     b = 655 # K
     return E0gap_Si - a*T*T/(T+b)

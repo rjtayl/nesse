@@ -72,6 +72,10 @@ class Simulation:
     
         # Get electric field interpolations
         eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate()
+        #eFieldx_interp = lambda x: [0,]
+        #eFieldy_interp = lambda x: [0,]
+        #eFieldz_interp = lambda x: [750e2,]
+        #eFieldMag_interp = lambda x: [750e2,]
         
         simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
         
@@ -84,19 +88,18 @@ class Simulation:
             new_times = []
             new_pos_h = []
             new_times_h = []
-            for i in tqdm(range(len(event.pos))):
-                #print(i)
-                
-                pairs = event.dE/Egap(self.temp)
-                
-                for pair in pairs:
-                
-                    x,y,z,t = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
+            #rint will give an integer number of e-h pairs, but will need to use Fano factor for a proper calculation
+            pairs = np.rint(event.dE/ephBestFit(self.temp))
+
+            for j in tqdm(range(len(event.pos))):
+                print(pairs[j])
+                for k in tqdm(range(int(pairs[j]))):
+                    x,y,z,t = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
                                             eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion)
                     new_pos.append(np.stack((x,y,z), axis=-1))
                     new_times.append(t)
                 
-                    x_h,y_h,z_h,t_h = propagateCarrier(event.pos[i][0], event.pos[i][1], event.pos[i][2], eps, eFieldx_interp, eFieldy_interp, 
+                    x_h,y_h,z_h,t_h = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
                                             eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion,electron=False)
                     new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
                     new_times_h.append(t_h)
@@ -118,7 +121,5 @@ class Simulation:
         if self.electronicResponse is not None:
                 for event in events:
                     event.convolveElectronicResponse(self.electronicResponse)
-        
-            
             
         return None

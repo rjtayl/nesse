@@ -33,7 +33,7 @@ def updateQuasiparticles(objects, dt, extField = np.zeros(DIMENSIONS), temp=300)
         objects[i].addVel(dv)
         objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
 
-def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, stepLimit=None, electron=True):
+def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, stepLimit=1000, electron=True):
     
     x = [x0, ]
     y = [y0, ]
@@ -59,7 +59,7 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
             d_temp = diffusion_electron(T) if electron else diffusion_hole(T)
         else:
             d_temp = d
-        
+
         dx = 0
         dy = 0
         dz = 0
@@ -74,17 +74,19 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
             dr = np.sqrt(dx**2+dy**2+dz**2)
             
             #print(dt, dz)
-            angle = np.arctan(dy/dx)
+            angle = 0
+            if (dx != 0):
+                angle = np.arctan(dy/dx)
             phi = np.arccos(dz/dr)
         else:
             dt = tauTrap(x[-1], y[-1], z[-1])/1e5
             angle = 0
         
         #Check if particle gets trapped
-        p = dt/tauTrap(x[-1], y[-1], z[-1])
-        r = np.random.uniform()
-        if r < p:
-            return x, y, z, t
+        #p = dt/tauTrap(x[-1], y[-1], z[-1])
+        #r = np.random.random()
+        #if r < p:
+        #    return x, y, z, t
         
         
         dxd = 0
@@ -104,3 +106,6 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
         #print(x[-1], y[-1], t[-1])
         
     return x, y, z, t
+
+if __name__ == "__main__":
+    propagateCarrier(0, 0, 0, 1e-4, lambda a : [0,], lambda a : [0,], lambda a: [750e2,], lambda a : [750e2,], [[-1, 1], [-1, 1], [0, 0.002]], 130, diffusion=True)

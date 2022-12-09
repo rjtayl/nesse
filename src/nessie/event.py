@@ -41,14 +41,16 @@ class Event:
         if electron:
             self.pos_drift_e = pos
             self.times_drift_e = times
+            print("Drift paths length: %d" % len(self.pos_drift_e))
         else:
             self.pos_drift_h = pos
             self.times_drift_h = times
         return None
         
-    def convertUnits(self, lengthConversionFactor, timeConversionFactor):
-        self.pos = self.pos*lengthConversionFactor
-        self.times = self.times*timeConversionFactor
+    def convertUnits(self, energyConversionFactor, lengthConversionFactor, timeConversionFactor):
+        self.dE *= energyConversionFactor
+        self.pos *= lengthConversionFactor
+        self.times *= timeConversionFactor
         return None
         
     def getDriftVelocities(self):
@@ -132,7 +134,7 @@ def eventsFromG4root(filename):
     events = []
     for eID, group in gdf:
         event = Event(eID, group[["x", "y", "z"]].to_numpy(), group["eDep"].to_numpy(), group["time"].to_numpy())
-        event.convertUnits(1e-3,1e-9)
+        event.convertUnits(1e3,1e-3,1e-9)
         events.append(event)
     return events
     

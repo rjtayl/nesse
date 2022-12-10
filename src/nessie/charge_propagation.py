@@ -33,7 +33,7 @@ def updateQuasiparticles(objects, dt, extField = np.zeros(DIMENSIONS), temp=300)
         objects[i].addVel(dv)
         objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
 
-def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, stepLimit=1000, electron=True):
+def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, stepLimit=1000, electron=True, interp3d=False):
     
     x = [x0, ]
     y = [y0, ]
@@ -44,10 +44,19 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
             & (z[-1] >= bounds[2][0]) & (z[-1] <= bounds[2][1]) and len(t)<stepLimit):
         #print(len(t), len(t)<stepLimit)
         #print(x[-1], y[-1], z[-1])
-        E = E_i([x[-1], y[-1], z[-1]])[0]
-        Ex = Ex_i([x[-1], y[-1], z[-1]])[0]
-        Ey = Ey_i([x[-1], y[-1], z[-1]])[0]
-        Ez = Ez_i([x[-1], y[-1], z[-1]])[0]
+        
+        if interp3d:
+            E = E_i([x[-1], y[-1], z[-1]])
+            Ex = Ex_i([x[-1], y[-1], z[-1]])
+            Ey = Ey_i([x[-1], y[-1], z[-1]])
+            Ez = Ez_i([x[-1], y[-1], z[-1]])
+        
+        else:
+            E = E_i([x[-1], y[-1], z[-1]])[0]
+            Ex = Ex_i([x[-1], y[-1], z[-1]])[0]
+            Ey = Ey_i([x[-1], y[-1], z[-1]])[0]
+            Ez = Ez_i([x[-1], y[-1], z[-1]])[0]
+        
         
         if electron:
         	mu = generalized_mobility_el(T, NI(x[-1], y[-1], z[-1]), E)

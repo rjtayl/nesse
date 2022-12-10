@@ -74,7 +74,7 @@ class Simulation:
         eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate()
         #eFieldx_interp = lambda x: [0,]
         #eFieldy_interp = lambda x: [0,]
-        #eFieldz_interp = lambda x: [750e2,]
+        #eFieldz_interp = lambda x: [-750e2,]
         #eFieldMag_interp = lambda x: [750e2,]
         
         simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]

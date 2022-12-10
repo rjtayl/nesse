@@ -72,42 +72,61 @@ class Event:
         self.vel_drift_h = vel_drift_h
         return None
         
-    def calculateInducedCurrent(self,weightingField, dt):
+    def calculateInducedCurrent(self,weightingField, dt, interp3d=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate()
         
         max_time = max([max([times[-1] for times in self.times_drift_e]),max([times[-1] for times in self.times_drift_h])])
         times_I = np.arange(0,max_time,dt)
         
         induced_I = np.zeros(len(times_I))
-        for i in range(len(self.vel_drift_e)):
-            Is = [-qe_SI*np.dot(self.vel_drift_e[i][j], 
-                    [weightingFieldx_interp(self.pos_drift_e[i][j]),
-                     weightingFieldy_interp(self.pos_drift_e[i][j]),
-                     weightingFieldz_interp(self.pos_drift_e[i][j])])[0] for j in range(len(self.vel_drift_e[i]))]
+
+        if interp3d:
+                    
+            for i in range(len(self.vel_drift_e)):
+                Is = [-qe_SI*np.dot(self.vel_drift_e[i][j], 
+                        [weightingFieldx_interp(self.pos_drift_e[i][j]),
+                         weightingFieldy_interp(self.pos_drift_e[i][j]),
+                         weightingFieldz_interp(self.pos_drift_e[i][j])]) for j in range(len(self.vel_drift_e[i]))]
+                         
+        else:
+            for i in range(len(self.vel_drift_e)):
+                Is = [-qe_SI*np.dot(self.vel_drift_e[i][j], 
+                        [weightingFieldx_interp(self.pos_drift_e[i][j]),
+                         weightingFieldy_interp(self.pos_drift_e[i][j]),
+                         weightingFieldz_interp(self.pos_drift_e[i][j])])[0] for j in range(len(self.vel_drift_e[i]))]
+                
+                
+        #times = self.times_drift_e[i][:-1] + self.times[i]
+        times = self.times_drift_e[i][:-1]
+    
+        if len(Is)>1:
+            func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
+            induced_I += func_I(times_I)
             
-            #times = self.times_drift_e[i][:-1] + self.times[i]
-            times = self.times_drift_e[i][:-1]
+           
+        if interp3d:
+                    
+            for i in range(len(self.vel_drift_h)):
+                Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
+                        [weightingFieldx_interp(self.pos_drift_h[i][j]),
+                         weightingFieldy_interp(self.pos_drift_h[i][j]),
+                         weightingFieldz_interp(self.pos_drift_h[i][j])]) for j in range(len(self.vel_drift_h[i]))]
+                         
+        else:
+            for i in range(len(self.vel_drift_h)):
+                Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
+                        [weightingFieldx_interp(self.pos_drift_h[i][j]),
+                         weightingFieldy_interp(self.pos_drift_h[i][j]),
+                         weightingFieldz_interp(self.pos_drift_h[i][j])])[0] for j in range(len(self.vel_drift_h[i]))]
             
-            if len(Is)>1:
-                func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
-            
-        for i in range(len(self.vel_drift_h)):
-            #print(i)
-            
-            Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
-                    [weightingFieldx_interp(self.pos_drift_h[i][j]),
-                     weightingFieldy_interp(self.pos_drift_h[i][j]),
-                     weightingFieldz_interp(self.pos_drift_h[i][j])])[0] for j in range(len(self.vel_drift_h[i]))]
-            
-            #times = self.times_drift_h[i][:-1] + self.times[i]
-            times = self.times_drift_h[i][:-1]
-            
-            #print(len(times),len(Is))  
-          
-            if len(Is)>1:
-                func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
+        #times = self.times_drift_h[i][:-1] + self.times[i]
+        times = self.times_drift_h[i][:-1]
+        
+        #print(len(times),len(Is))  
+      
+        if len(Is)>1:
+            func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
+            induced_I += func_I(times_I)
         
         self.dI = induced_I
         self.dt = times_I

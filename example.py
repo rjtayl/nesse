@@ -17,14 +17,18 @@ def main():
     Events = nessie.eventsFromG4root(events_filename)
     #print("%d events loaded" %(len(Events)))
 
-    #event = Event(0, np.array([[0, 0, 0],]), np.array([40, ]), np.array([0,]))
-    #Events = [event, None,]
+    #event = nessie.Event(0, np.array([[0, 0, 0],]), np.array([40, ]), np.array([0,]))
+    
+    n=5
+    event0 = Events[0]
+    event = nessie.Event(0, event0.pos[:n], event0.dE[:n], event0.times[:n])
+    Events = [event, None,]
 
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
     WP_filename = "config/Fields/NessieWP_4e7Linear0-150V_grid.hf"
 
-    Efield=nessie.eFieldFromH5(EF_filename)
+    Efield=nessie.eFieldFromH5(EF_filename)  
     weightingPotential = nessie.weightingPotentialFromH5(WP_filename)
 
     print(weightingPotential,Efield)
@@ -61,12 +65,12 @@ def main():
     
     #simulate without diffusion
     i=1
-    #sim.simulate(Events[:i], stepLimit=1000,eps=1e-4)
-    #nessie.plot_event_drift(Events[i],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
+    sim.simulate(Events[:i], stepLimit=1000,eps=1e-5)
+    nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #simulate with diffusion
-    sim.simulate(Events[:i],eps=1e-5, stepLimit=1000, diffusion=True)
-    nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
+    #sim.simulate(Events[:i],eps=1e-5, stepLimit=1000, diffusion=True)
+    #nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]],suffix="_diffusion")
     
     #plot induced current
     for event in Events[:i]:

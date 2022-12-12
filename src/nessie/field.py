@@ -1,5 +1,5 @@
 from scipy.interpolate import RegularGridInterpolator 
-from interp3d import interp_3d
+from .interp_3d import *
 import numpy as np
 
 class Potential:
@@ -35,11 +35,16 @@ class Field:
         z = self.grid[2]
         
         if interp3d:
-            fieldx_interp = interp_3d.Interp3D(self.fieldx.astype('double', order="C"), x,y,z)
-            fieldy_interp = interp_3d.Interp3D(self.fieldy.astype('double',order="C"), x,y,z)
-            fieldz_interp = interp_3d.Interp3D(self.fieldz.astype('double',order="C"), x,y,z)
+            #fieldx_interp = interp_3d.Interp3D(self.fieldx.astype('double', order="C"), x,y,z)
+            #fieldy_interp = interp_3d.Interp3D(self.fieldy.astype('double',order="C"), x,y,z)
+            #fieldz_interp = interp_3d.Interp3D(self.fieldz.astype('double',order="C"), x,y,z)
+            fieldx_interp = Interp3D(self.fieldx.astype('double', order="C"), x,y,z)
+            fieldy_interp = Interp3D(self.fieldy.astype('double',order="C"), x,y,z)
+            fieldz_interp = Interp3D(self.fieldz.astype('double',order="C"), x,y,z)
+            
             fieldMag = np.sqrt(self.fieldx**2+self.fieldy**2+self.fieldz**2)
-            fieldMag_interp = interp_3d.Interp3D(fieldMag.astype('double',order="C"), x,y,z)
+            #fieldMag_interp = interp_3d.Interp3D(fieldMag.astype('double',order="C"), x,y,z)
+            fieldMag_interp = Interp3D(fieldMag.astype('double',order="C"), x,y,z)
             
         else:   
             fieldx_interp = RegularGridInterpolator((x,y,z),self.fieldx)

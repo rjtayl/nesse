@@ -17,11 +17,13 @@ def main():
     Events = nessie.eventsFromG4root(events_filename)
     #print("%d events loaded" %(len(Events)))
 
-    #event = nessie.Event(0, np.array([[0, 0, 0],]), np.array([40, ]), np.array([0,]))
+    #event = nessie.Event(0, np.array([[0, 0, 0], [0.001, 0, 0.0001]]), np.array([2000, 1000]), np.array([0, 0]))
+    #event = nessie.Event(0, np.array([[0.001, 0, 0.001],]), np.array([40,]), np.array([0, ]))
     
-    n=5
+    n=10
     event0 = Events[0]
     event = nessie.Event(0, event0.pos[:n], event0.dE[:n], event0.times[:n])
+    #event = Events[0]
     Events = [event, None,]
 
     #import SSD fields
@@ -65,8 +67,10 @@ def main():
     
     #simulate without diffusion
     i=1
-    sim.simulate(Events[:i], stepLimit=1000,eps=1e-5, interp3d=False)
+    sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True)
     nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
+
+    print(len(event.pos_drift_e), len(event.pos_drift_e[0]), len(event.pos_drift_e[0][0]))
     
     #simulate with diffusion
     #sim.simulate(Events[:i],eps=1e-5, stepLimit=1000, diffusion=True)

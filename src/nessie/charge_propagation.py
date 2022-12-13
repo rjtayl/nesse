@@ -8,6 +8,7 @@ def CoulombForce(q1, q2, pos1, pos2, safety = 7e-9):
     return Fs*(pos2-pos1)/r2**0.5
 
 def getDriftStep(angle, d, dt):
+    #print(d, dt)
     sigma1, sigma2, sigma3 = np.random.standard_normal(3)*(2*d*dt)**0.5
     #dxd = np.cos(angle)*sigma1 - np.sin(angle)*sigma2
     #dyd = np.sin(angle)*sigma1 + np.cos(angle)*sigma2
@@ -33,7 +34,7 @@ def updateQuasiparticles(objects, dt, extField = np.zeros(DIMENSIONS), temp=300)
         objects[i].addVel(dv)
         objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
 
-def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, stepLimit=1000, electron=True, interp3d=False):
+def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, electron=True, interp3d=False):
     
     x = [x0, ]
     y = [y0, ]
@@ -41,7 +42,7 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
     t = [0, ]
     diffRatio = [0, ]
     while ((x[-1] >= bounds[0][0]) & (x[-1] <= bounds[0][1]) & (y[-1] >= bounds[1][0]) & (y[-1] <= bounds[1][1]) 
-            & (z[-1] >= bounds[2][0]) & (z[-1] <= bounds[2][1]) and len(t)<stepLimit):
+            & (z[-1] >= bounds[2][0]) & (z[-1] <= bounds[2][1])):
         #print(len(t), len(t)<stepLimit)
         #print(x[-1], y[-1], z[-1])
         
@@ -69,12 +70,13 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
         else:
             d_temp = d
 
+
         dx = 0
         dy = 0
         dz = 0
         
         if abs(E) > 0:
-            dt = min(min(eps/mu/E, tauTrap(x[-1], y[-1], z[-1])/1e5),(bounds[2][1]-z[-1])/mu/np.abs(Ez)+1e-10) #Time step needs to be significantly smaller than trapping time for Poisson process to make sense 
+            dt = min(min(abs(eps/mu/E), tauTrap(x[-1], y[-1], z[-1])/1e5),(bounds[2][1]-z[-1])/mu/np.abs(Ez)+1e-10) #Time step needs to be significantly smaller than trapping time for Poisson process to make sense 
             
             sign = -1 if electron else 1
             dx = sign*dt*mu*Ex
@@ -117,4 +119,4 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
     return x, y, z, t
 
 if __name__ == "__main__":
-    propagateCarrier(0, 0, 0, 1e-4, lambda a : [0,], lambda a : [0,], lambda a: [750e2,], lambda a : [750e2,], [[-1, 1], [-1, 1], [0, 0.002]], 130, diffusion=True)
+    x, y, z, t = propagateCarrier(0, 0, 0, 1e-4, lambda a : [0,], lambda a : [0,], lambda a: [-750e2,], lambda a : [-750e2,], [[-1, 1], [-1, 1], [0, 0.002]], 130, diffusion=True)

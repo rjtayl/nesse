@@ -68,7 +68,7 @@ class Simulation:
         self.electronicResponse = {"times":ts, "step":step}
         return None
 
-    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, stepLimit=1000, d=None, interp3d = False):
+    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, d=None, interp3d = False, maxPairs=500):
     
         # Get electric field interpolations
         eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate(interp3d)
@@ -92,15 +92,15 @@ class Simulation:
             pairs = np.rint(event.dE/ephBestFit(self.temp))
 
             for j in tqdm(range(len(event.pos))):
-                print(pairs[j])
+                #print(pairs[j])
                 for k in tqdm(range(int(pairs[j]))):
                     x,y,z,t = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
-                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion, interp3d=interp3d)
+                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, interp3d=interp3d)
                     new_pos.append(np.stack((x,y,z), axis=-1))
                     new_times.append(t)
                 
                     x_h,y_h,z_h,t_h = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
-                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, stepLimit=stepLimit, diffusion=diffusion,electron=False, interp3d=interp3d)
+                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion,electron=False, interp3d=interp3d)
                     new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
                     new_times_h.append(t_h)
                 
@@ -116,7 +116,7 @@ class Simulation:
         if self.weightingField is None: setWeightingField()
         
         for event in events:
-            event.calculateInducedCurrent(self.weightingField, 0.1e-9)
+            event.calculateInducedCurrent(self.weightingField, 0.1e-9, interp3d=interp3d)
             
         if self.electronicResponse is not None:
                 for event in events:

@@ -3,6 +3,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs': [np.get_include()]})
 
 from numba import jit
+#from bisect import bisect_left
 
 from .interp import _interp3D
 
@@ -13,6 +14,30 @@ def find_first(item, vec):
         if item < val:
             return i
     return -1
+
+@jit(nopython=True)
+def bisect_left(a, x):
+    hi = len(a)
+    lo = 0
+    while lo < hi:
+        mid = (lo + hi) // 2
+        if a[mid] < x:
+            lo = mid + 1
+        else:
+            hi = mid
+    return lo
+ 
+@jit(nopython=True)
+def get_ijk(t, x, y, z):
+    i_s = [0,0,0]
+    axes = [x,y,z]
+    for d in range(3):
+        for i, val in enumerate(axes[d]):
+            if t[d] < val:
+                i_s[d] = i -1
+                
+    return i_s
+    
 
 class Interp3D(object):
     def __init__(self, v, x, y, z):
@@ -44,6 +69,12 @@ class Interp3D(object):
         self.delta_x = np.diff(x)
         self.delta_y = np.diff(y)
         self.delta_z = np.diff(z)
+        
+    def get_ijk(self, t):
+        return find_first(t[0], self.x)-1, find_first(t[1], self.y)-1, find_first(t[2], self.z)-1
+
+    def get_lmn(self, t, i, j, k):
+        return i + (t[0]-self.x[i])/self.delta_x[i], j + (t[1]-self.y[j])/self.delta_y[j], k + (t[2]-self.z[k])/self.delta_z[k]
 
     def __call__(self, t):
         X,Y,Z = self.v.shape[0], self.v.shape[1], self.v.shape[2]
@@ -54,17 +85,25 @@ class Interp3D(object):
         #j = np.where(self.y>t[1])[0][0]-1
         #k = np.where(self.z>t[2])[0][0]-1
         
-        i = find_first(t[0], self.x)-1
-        j = find_first(t[1], self.y)-1
-        k = find_first(t[2], self.z)-1
+        #i = find_first(t[0], self.x)-1
+        #j = find_first(t[1], self.y)-1
+        #k = find_first(t[2], self.z)-1
+        #i,j,k = self.get_ijk(t)
+        i,j,k = get_ijk(np.array(t), self.x, self.y, self.z)
+        
+        #i = bisect_left(self.x, t[0])
+        #j = bisect_left(self.y, t[1])
+        #k = bisect_left(self.z, t[2])
         
         
         #print(i,j,k)
         #print(self.x[i], self.x[j], self.x[k])
     
-        l = i + (t[0]-self.x[i])/self.delta_x[i]
-        m = j + (t[1]-self.y[j])/self.delta_y[j]
-        n = k + (t[2]-self.z[k])/self.delta_z[k]
+        #l = i + (t[0]-self.x[i])/self.delta_x[i]
+        #m = j + (t[1]-self.y[j])/self.delta_y[j]
+        #n = k + (t[2]-self.z[k])/self.delta_z[k]
+        
+        l,m,n = self.get_lmn(t, i, j, k)
         
         #print(l,m,n)
 

@@ -13,6 +13,13 @@ def getDriftStep(angle, d, dt):
     #dxd = np.cos(angle)*sigma1 - np.sin(angle)*sigma2
     #dyd = np.sin(angle)*sigma1 + np.cos(angle)*sigma2
     return sigma1, sigma2, sigma3
+    
+def getDriftStep2(angle, d, dt, rand_step):
+    #print(d, dt)
+    sigma1, sigma2, sigma3 = rand_step*(2*d*dt)**0.5
+    #dxd = np.cos(angle)*sigma1 - np.sin(angle)*sigma2
+    #dyd = np.sin(angle)*sigma1 + np.cos(angle)*sigma2
+    return sigma1, sigma2, sigma3
 
 def getEffectiveCoulombField(objects, dt):
     acc = np.zeros((len(objects), DIMENSIONS))
@@ -35,7 +42,7 @@ def updateQuasiparticles(objects, dt, extField = np.zeros(DIMENSIONS), temp=300)
         objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
 
 def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, electron=True, interp3d=False):
-    
+    rand_steps = np.random.standard_normal(size=(10000,3))
     x = [x0, ]
     y = [y0, ]
     z = [z0, ]
@@ -106,6 +113,9 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
        
         if (diffusion and d_temp != 0):
                 dxd, dyd, dzd = getDriftStep(angle, d_temp, dt)
+                #print(rand_steps[0])
+                #dxd, dyd, dzd = getDriftStep2(angle, d_temp, dt, rand_steps[0])
+                #rand_steps = np.roll(rand_steps, 1, axis=0)
         
         #print("diffusion", dxd, dyd, dzd, dt)
         

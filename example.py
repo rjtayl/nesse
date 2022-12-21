@@ -7,6 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import csv
 import cProfile
+import pstats
+from pstats import SortKey
 
 from src.nessie.event import *
 
@@ -69,8 +71,15 @@ def main():
     
     #simulate without diffusion
     i=1
-    sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=False)
-    nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
+    sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True)
+    #nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
+    
+    #cProfile.runctx('sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True)', {'sim':sim, 'Events':Events, 'i':i},{}, 'sim_stats')
+    
+    #p = pstats.Stats('sim_stats')
+    #p.sort_stats(SortKey.FILENAME).print_stats('charge_propagation.py')
+    
+    
 
     #print(len(event.pos_drift_e), len(event.pos_drift_e[0]), len(event.pos_drift_e[0][0]))
     

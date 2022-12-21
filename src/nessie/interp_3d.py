@@ -79,7 +79,7 @@ class Interp3D(object):
     def __call__(self, t):
         X,Y,Z = self.v.shape[0], self.v.shape[1], self.v.shape[2]
         
-        #print(t)
+        #print(type(t))
 
         #i = np.where(self.x>t[0])[0][0]-1
         #j = np.where(self.y>t[1])[0][0]-1
@@ -88,8 +88,8 @@ class Interp3D(object):
         #i = find_first(t[0], self.x)-1
         #j = find_first(t[1], self.y)-1
         #k = find_first(t[2], self.z)-1
-        #i,j,k = self.get_ijk(t)
-        i,j,k = get_ijk(np.array(t), self.x, self.y, self.z)
+        i,j,k = self.get_ijk(t)
+        #i,j,k = get_ijk(np.array(t), self.x, self.y, self.z)
         
         #i = bisect_left(self.x, t[0])
         #j = bisect_left(self.y, t[1])

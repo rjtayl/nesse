@@ -1,6 +1,7 @@
 import numpy as np
 from .constants import *
 from scipy.interpolate import interp1d
+from tqdm import tqdm
 
 class Event:
     def __init__(self, _id, _pos, _dE, _times):
@@ -33,7 +34,7 @@ class Event:
         self.signal_I = np.convolve(func_I(temp_times),electronicResponse["step"])
         self.signal_times = np.arange(0,len(self.signal_I)*dt, dt)
         
-        print(type(self.signal_I), type(self.signal_times))
+        #print(type(self.signal_I), type(self.signal_times))
         
         return None
         
@@ -80,7 +81,7 @@ class Event:
         
         induced_I = np.zeros(len(times_I))
 
-        for i in range(len(self.vel_drift_e)):
+        for i in tqdm(range(len(self.vel_drift_e))):
             if interp3d:
                 Is = [-qe_SI*np.dot(self.vel_drift_e[i][j], 
                         [weightingFieldx_interp(self.pos_drift_e[i][j]),
@@ -101,7 +102,7 @@ class Event:
                 
                 
         #times = self.times_drift_e[i][:-1] + self.times[i]
-        for i in range(len(self.vel_drift_h)):
+        for i in tqdm(range(len(self.vel_drift_h))):
             if interp3d:
                 Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
                         [weightingFieldx_interp(self.pos_drift_h[i][j]),

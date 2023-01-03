@@ -27,7 +27,7 @@ def main():
     event0 = Events[0]
     event = nessie.Event(0, event0.pos[:n], event0.dE[:n], event0.times[:n])
     #event = nessie.Event(0, np.array([event0.pos[n]]), np.array([event0.dE[n]]), np.array([event0.times[n]]))
-    #event = Events[0]
+    event = Events[0]
     Events = [event, None,]
 
     #import SSD fields
@@ -71,7 +71,7 @@ def main():
     
     #simulate without diffusion
     i=1
-    sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True)
+    sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True, parallel=True)
     #nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #cProfile.runctx('sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True)', {'sim':sim, 'Events':Events, 'i':i},{}, 'sim_stats')

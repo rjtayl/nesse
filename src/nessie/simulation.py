@@ -5,6 +5,10 @@ from .charge_propagation import *
 from tqdm import tqdm
 import csv
 from .silicon import *
+from joblib import Parallel, delayed
+import multiprocessing
+
+num_cores = multiprocessing.cpu_count()
 
 class Simulation:
     def __init__(self, _name, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
@@ -68,7 +72,7 @@ class Simulation:
         self.electronicResponse = {"times":ts, "step":step}
         return None
 
-    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, d=None, interp3d = False, maxPairs=500):
+    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, d=None, interp3d = False, maxPairs=500, parallel=False):
     
         # Get electric field interpolations
         eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate(interp3d)
@@ -93,16 +97,29 @@ class Simulation:
 
             for j in tqdm(range(len(event.pos))):
                 #print(pairs[j])
-                for k in tqdm(range(int(pairs[j]))):
-                    x,y,z,t = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
-                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, interp3d=interp3d)
-                    new_pos.append(np.stack((x,y,z), axis=-1))
-                    new_times.append(t)
-                
-                    x_h,y_h,z_h,t_h = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
-                                            eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion,electron=False, interp3d=interp3d)
-                    new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
-                    new_times_h.append(t_h)
+                if parallel:
+                    pair_pos = Parallel(n_jobs=num_cores,prefer="threads")(delayed(propagateCarrier)(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, interp3d=interp3d) for k in range(int(pairs[j])))
+                    
+                    for pair in pair_pos:
+                        new_pos.append(np.stack((pair[0],pair[1],pair[2]), axis=-1))
+                        new_times.append(pair[3])
+                        
+                    pair_pos_h = Parallel(n_jobs=num_cores,prefer="threads")(delayed(propagateCarrier)(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, electron=False, interp3d=interp3d) for k in range(int(pairs[j])))
+                    
+                    for pair in pair_pos_h:
+                        new_pos_h.append(np.stack((pair[0],pair[1],pair[2]), axis=-1))
+                        new_times_h.append(pair[3])
+                else:
+                    for k in tqdm(range(int(pairs[j]))):
+                        x,y,z,t = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
+                                                eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, interp3d=interp3d)
+                        new_pos.append(np.stack((x,y,z), axis=-1))
+                        new_times.append(t)
+                    
+                        x_h,y_h,z_h,t_h = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
+                                                eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion,electron=False, interp3d=interp3d)
+                        new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
+                        new_times_h.append(t_h)
                 
             event.setDriftPaths(new_pos,new_times)
             event.setDriftPaths(new_pos_h,new_times_h,electron=False)

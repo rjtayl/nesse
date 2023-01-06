@@ -3,7 +3,19 @@ from .constants import *
 from scipy.interpolate import interp1d
 from tqdm import tqdm
 
+##########
+# 
+
+##########
+
 class Event:
+    '''
+    The Event class contains all information about a single particle event in the detector. 
+    This starts with information of energy depositions imported from Geant4 (pos,dE,times). 
+    Electron and hole drift paths are stored and used to determine the signal on a detector. 
+
+    Currently this only works for a single contact, but we plan to extend to all contacts.
+    '''
     def __init__(self, _id, _pos, _dE, _times):
         self.ID = _id
         self.pos = _pos
@@ -33,8 +45,6 @@ class Event:
         
         self.signal_I = np.convolve(func_I(temp_times),electronicResponse["step"])
         self.signal_times = np.arange(0,len(self.signal_I)*dt, dt)
-        
-        #print(type(self.signal_I), type(self.signal_times))
         
         return None
         
@@ -100,8 +110,6 @@ class Event:
                 func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
                 induced_I += func_I(times_I)
                 
-                
-        #times = self.times_drift_e[i][:-1] + self.times[i]
         for i in tqdm(range(len(self.vel_drift_h))):
             if interp3d:
                 Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
@@ -119,14 +127,11 @@ class Event:
             if len(Is)>1:
                 func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
                 induced_I += func_I(times_I)
-            
-        #times = self.times_drift_h[i][:-1] + self.times[i]
         
         self.dI = induced_I
         self.dt = times_I
         
-        return None           
-            
+        return None                  
 
 def eventsFromG4root(filename):
     import uproot

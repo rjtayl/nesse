@@ -56,18 +56,13 @@ def plot_field_lines(field, mesh_size = (500,500), x_plane = True, density = 2,
     ni, nj = mesh_size[0], mesh_size[1]
     
     if x_plane:
-        #E = lambda y,z:fieldy_interp([0,y,z]),fieldz_interp([0,y,z])
         i = np.linspace(bounds[1][0], bounds[1][1], ni)
         j = np.linspace(bounds[2][0], bounds[2][1], nj)
         Y, Z = np.meshgrid(i,j)
         X = np.zeros((ni,nj))
-        #print(X,Z)
-        #print(np.shape(X), np.shape(Z))
-        #print(fieldy_interp([0,X,Z]))
         coords = np.stack((X,Y,Z),axis=-1)
         Ex, Ey, Ez = fieldy_interp(coords), fieldz_interp(coords), fieldz_interp(coords)
     else:
-        #E = lambda x,z:fieldy_interp([x,0,z]),fieldz_interp([x,0,z])
         i = np.linspace(bounds[0][0], bounds[0][1], ni)
         j = np.linspace(bounds[2][0], bounds[2][1], nj)
         X, Z = np.meshgrid(i,j)

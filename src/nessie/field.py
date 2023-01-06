@@ -3,6 +3,12 @@ from .interp_3d import *
 import numpy as np
 
 class Potential:
+    '''
+    The Potential class is used to create electric and weighting potential objects. 
+    These can then be converted to Field objects for simulation. 
+    We use Potential objects mainly for plotting and transferring field information between nessie and our other field solving tools. 
+    data is assumed to be a 3-dimensional array. grid is an array of axes (x,y,z) where each axis is an array of positions in meters. 
+    '''
     def __init__(self, _name, _data=None, _grid=None):
         self.name = _name
         self.data = _data
@@ -11,8 +17,14 @@ class Potential:
     def __str__(self):
         return ("Nessie Potential object \n Name: %s \n Size: %s \n" 
                 % (self.name, np.shape(self.data)))
-            
+
 class Field:
+    '''
+    The Field class is used to create electric and weighting field objects. 
+    We use cartesian coordinates and define each field component as its own 3-dimensional array (fieldx, fieldy, fieldz). 
+    grid is the same as in the Potential class. 
+    '''
+    
     def __init__(self, _name, _fieldx=None, _fieldy=None,_fieldz=None, _grid=None):
         self.name = _name
         self.fieldx = _fieldx
@@ -23,27 +35,27 @@ class Field:
     def __str__(self):
         return ("Nessie Field object \n Name: %s \n Size: %s \n"
                 % (self.name, np.shape(self.fieldx)))
-                
+     
     def interpolate(self, interp3d=False):
+        '''
+        Returns linear interpolations of the field. 
+        interp3d is a cython implementation of grid interpolation, we have modified this from https://github.com/jglaser/interp3d to work for non-regular grids. 
+        If interp3d is set to False instead the scipy RegularGridInterpolator will be used. 
+        This is a pure python interpolator and is significantly slower. 
+        Each interpolator takes input differently so which is used is tracked throughout the simulation.  
+        '''
         fieldShape = np.shape(self.fieldx)
-        #x = np.linspace(fieldBounds[0][0],fieldBounds[0][1],fieldShape[0])
-        #y = np.linspace(fieldBounds[1][0],fieldBounds[1][1],fieldShape[1])
-        #z = np.linspace(fieldBounds[2][0],fieldBounds[2][1],fieldShape[2])
-        
         x = self.grid[0]
         y = self.grid[1]
         z = self.grid[2]
         
         if interp3d:
-            #fieldx_interp = interp_3d.Interp3D(self.fieldx.astype('double', order="C"), x,y,z)
-            #fieldy_interp = interp_3d.Interp3D(self.fieldy.astype('double',order="C"), x,y,z)
-            #fieldz_interp = interp_3d.Interp3D(self.fieldz.astype('double',order="C"), x,y,z)
+            
             fieldx_interp = Interp3D(self.fieldx.astype('double', order="C"), x,y,z)
             fieldy_interp = Interp3D(self.fieldy.astype('double',order="C"), x,y,z)
             fieldz_interp = Interp3D(self.fieldz.astype('double',order="C"), x,y,z)
             
             fieldMag = np.sqrt(self.fieldx**2+self.fieldy**2+self.fieldz**2)
-            #fieldMag_interp = interp_3d.Interp3D(fieldMag.astype('double',order="C"), x,y,z)
             fieldMag_interp = Interp3D(fieldMag.astype('double',order="C"), x,y,z)
             
         else:   
@@ -55,8 +67,12 @@ class Field:
         
         return fieldx_interp, fieldy_interp, fieldz_interp, fieldMag_interp
 
-#Import weighting potential from hdf5 file.
+
 def weightingPotentialFromH5(filename, rotate90=True):
+    '''
+    Import weighting potential from hdf5 file. 
+    When saving files to hdf5 from Julia a rotation is applied to the array, so when importing from SSD we need to rotate back.
+    '''
     import h5py
     f = h5py.File(filename, 'r')
     data = np.array(f["wp"])

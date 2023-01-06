@@ -11,6 +11,11 @@ import multiprocessing
 num_cores = multiprocessing.cpu_count()
 
 class Simulation:
+    '''
+    Object contains all nessie objects needed to simulate a signal. 
+    Currently assumes only one contact.
+    
+    '''
     def __init__(self, _name, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
                     _cceField=None, _chargeCaptureField=None, _electronicResponse=None, _temp=None):        
         self.name = _name
@@ -73,6 +78,13 @@ class Simulation:
         return None
 
     def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, d=None, interp3d = False, maxPairs=500, parallel=False):
+        '''
+        Where it all happens! 
+        When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
+        Reduce maxPairs to run faster by having fewer quasiparticles with greater charge.
+        Setting interp3d to true here will use our cython interpolator throughout the simulation.
+        For machines with many cores you can try setting parallel=True. We see slight speedups but your mileage may vary. 
+        '''
     
         # Get electric field interpolations
         eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate(interp3d)
@@ -96,7 +108,6 @@ class Simulation:
             pairs = np.rint(event.dE/ephBestFit(self.temp))
 
             for j in tqdm(range(len(event.pos))):
-                #print(pairs[j])
                 if parallel:
                     pair_pos = Parallel(n_jobs=num_cores,prefer="threads")(delayed(propagateCarrier)(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, interp3d=interp3d) for k in range(int(pairs[j])))
                     

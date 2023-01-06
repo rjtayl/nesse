@@ -3,14 +3,12 @@ import pyximport
 pyximport.install(setup_args={'include_dirs': [np.get_include()]})
 
 from numba import jit
-#from bisect import bisect_left
 
 from .interp import _interp3D
 
 @jit(nopython=True)
 def find_first(item, vec):
     for i, val in enumerate(vec):
-        #print(item, vec[i])
         if item < val:
             return i
     return -1
@@ -40,6 +38,10 @@ def get_ijk(t, x, y, z):
     
 
 class Interp3D(object):
+    '''
+    Grid interpolator for 3-dimensional regular rectangular grid. 
+    This is an old version, see function below.
+    '''
     def __init__(self, v, x, y, z):
         self.v = v
         self.min_x, self.max_x = x[0], x[-1]
@@ -61,6 +63,11 @@ class Interp3D(object):
         
         
 class Interp3D(object):
+    '''
+    Grid interpolator for 3-dimensional rectangular grid. 
+    Note that this is changed from above to work for non-regular grids.
+    get_ijk and get_lmn are seperate functions mainly for testing purposes.
+    '''
     def __init__(self, v, x, y, z):
         self.v = v
         self.x = x
@@ -78,33 +85,13 @@ class Interp3D(object):
 
     def __call__(self, t):
         X,Y,Z = self.v.shape[0], self.v.shape[1], self.v.shape[2]
-        
-        #print(type(t))
 
         #i = np.where(self.x>t[0])[0][0]-1
         #j = np.where(self.y>t[1])[0][0]-1
         #k = np.where(self.z>t[2])[0][0]-1
-        
-        #i = find_first(t[0], self.x)-1
-        #j = find_first(t[1], self.y)-1
-        #k = find_first(t[2], self.z)-1
+
         i,j,k = self.get_ijk(t)
-        #i,j,k = get_ijk(np.array(t), self.x, self.y, self.z)
-        
-        #i = bisect_left(self.x, t[0])
-        #j = bisect_left(self.y, t[1])
-        #k = bisect_left(self.z, t[2])
-        
-        
-        #print(i,j,k)
-        #print(self.x[i], self.x[j], self.x[k])
-    
-        #l = i + (t[0]-self.x[i])/self.delta_x[i]
-        #m = j + (t[1]-self.y[j])/self.delta_y[j]
-        #n = k + (t[2]-self.z[k])/self.delta_z[k]
         
         l,m,n = self.get_lmn(t, i, j, k)
-        
-        #print(l,m,n)
 
         return _interp3D(self.v, l, m, n, X, Y, Z)

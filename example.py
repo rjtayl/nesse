@@ -63,7 +63,7 @@ def main():
     sim.setBounds(bounds)
     
     #calculate weighting field
-    sim.setWeightingField()
+    #sim.setWeightingField()
     
     #nessie.plot_field_lines(sim.weightingField, Efield.bounds,x_plane=True, density=2, show_plot=True, log=False)
     

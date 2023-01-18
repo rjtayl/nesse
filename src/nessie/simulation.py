@@ -2,7 +2,7 @@ import numpy as np
 from .field import *
 from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
-from tqdm import tqdm
+from tqdm.notebook import tqdm
 import csv
 from .silicon import *
 from joblib import Parallel, delayed
@@ -77,7 +77,7 @@ class Simulation:
         self.electronicResponse = {"times":ts, "step":step}
         return None
 
-    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, d=None, interp3d = False, maxPairs=500, parallel=False):
+    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=500, parallel=False):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -141,7 +141,7 @@ class Simulation:
         #get induced current
         print("calculating induced current")
         
-        if self.weightingField is None: setWeightingField()
+        if self.weightingField is None: self.setWeightingField()
         
         for event in events:
             event.calculateInducedCurrent(self.weightingField, 0.1e-9, interp3d=interp3d)

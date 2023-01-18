@@ -7,17 +7,25 @@ from scipy.interpolate import RegularGridInterpolator
 plt.rcParams['figure.figsize'] = [8, 5]
 plt.rcParams.update({'font.size': 18})
 
-def plot_signal(event, show_plot=True, alpha=1):
+def plot_current(event, show_plot=True, alpha=1):
     plt.plot(event.dt,event.dI, alpha=alpha)
     if show_plot: plt.show()
     return None
+    
+def plot_signal(event, show_plot=True, alpha=1):
+    plt.plot(event.signal_times,event.signal_I, alpha=alpha)
+    if show_plot: plt.show()
+    return None
 
-def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True):
+
+def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True, pairs=None):
     fig = plt.figure()
     ax = plt.axes(projection ='3d')
     
+    N = len(event.pos_drift_e) if pairs == None else pairs
+    
     try:
-	    for i in range(len(event.pos_drift_e)):
+	    for i in range(N):
 	        x = event.pos_drift_e[i][:,0]
 	        y = event.pos_drift_e[i][:,1]
 	        z = event.pos_drift_e[i][:,2]
@@ -25,7 +33,7 @@ def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True):
     except: print("No electron drift paths")
 	
     try:
-        for i in range(len(event.pos_drift_h)):
+        for i in range(N):
             x = event.pos_drift_h[i][:,0]
             y = event.pos_drift_h[i][:,1]
             z = event.pos_drift_h[i][:,2]

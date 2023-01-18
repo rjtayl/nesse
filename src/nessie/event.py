@@ -134,13 +134,17 @@ class Event:
         
         return None    
     
-    def sample(self, dt):
+    def sample(self, dt,length=None):
         '''
         Samples the induced current of an event to larger timesteps so that it is the same format as nab data. 
         There is some question as to the proper way to do this; for now we simply take the value at the exact time sampled.
         '''
-        step = int(dt/(self.signal_times[1]-self.signal_times[0]))
-        return self.signal_I[::step].copy()
+        step = int(dt/(self.signal_times[1]-self.signal_times[0])) 
+        signal = self.signal_I[::step].copy()
+        if length==None:
+            return signal
+        else:
+            return np.pad(signal, (round(length/2),round(length/2)-len(signal)),"edge")
 
 def eventsFromG4root(filename):
     import uproot
@@ -166,8 +170,8 @@ def eventsFromG4root(filename):
     return events
     
 #convert events to nabPy form, and save optionally save pickle file if filename is given. dt is time sampling in ns, which is 4ns for current nab daq
-def saveEventsNabPy(events, filename=None, dt=4e-9):
-    new_events =np.array([event.sample(dt) for event in events])
+def saveEventsNabPy(events, filename=None, dt=4e-9, length=7000):
+    new_events =np.array([event.sample(dt,length) for event in events])
     if filename is not None:
         with open(filename+".pkl", "wb") as file:
             pickle.dump(new_events, file)
@@ -178,5 +182,17 @@ def loadEventsNabPy(filename):
     with open(filename, "rb") as file:
         events = pickle.load(file)
     
+    return events
+    
+    
+#save complete event object, for example if you want to be able to re-downsample, apply a different convolution, etc.
+def saveEvents(events, filename):
+    with open(filename+".pkl", "wb") as file:
+        pickle.dump(events, file)
+    return
+    
+def loadEvents(filename):
+    with open(filename+".pkl", "rb") as file:
+        events = pickle.load(file)
     return events
     

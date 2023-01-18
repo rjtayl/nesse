@@ -2,6 +2,7 @@ import numpy as np
 from .constants import *
 from scipy.interpolate import interp1d
 from tqdm import tqdm
+import pickle
 
 ##########
 # 
@@ -131,7 +132,15 @@ class Event:
         self.dI = induced_I
         self.dt = times_I
         
-        return None                  
+        return None    
+    
+    def sample(self, dt):
+        '''
+        Samples the induced current of an event to larger timesteps so that it is the same format as nab data. 
+        There is some question as to the proper way to do this; for now we simply take the value at the exact time sampled.
+        '''
+        step = int(dt/(self.signal_times[1]-self.signal_times[0]))
+        return self.signal_I[::step].copy()
 
 def eventsFromG4root(filename):
     import uproot
@@ -156,4 +165,18 @@ def eventsFromG4root(filename):
         events.append(event)
     return events
     
-
+#convert events to nabPy form, and save optionally save pickle file if filename is given. dt is time sampling in ns, which is 4ns for current nab daq
+def saveEventsNabPy(events, filename=None, dt=4e-9):
+    new_events =np.array([event.sample(dt) for event in events])
+    if filename is not None:
+        with open(filename+".pkl", "wb") as file:
+            pickle.dump(new_events, file)
+    
+    return new_events
+    
+def loadEventsNabPy(filename):
+    with open(filename, "rb") as file:
+        events = pickle.load(file)
+    
+    return events
+    

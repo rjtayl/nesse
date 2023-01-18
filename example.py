@@ -23,12 +23,12 @@ def main():
     #event = nessie.Event(0, np.array([[0, 0, 0], [0.001, 0, 0.0001]]), np.array([2000, 1000]), np.array([0, 0]))
     #event = nessie.Event(0, np.array([[0.001, 0, 0.001],]), np.array([40,]), np.array([0, ]))
     
-    n=7
+    n=2
     event0 = Events[0]
     event = nessie.Event(0, event0.pos[:n], event0.dE[:n], event0.times[:n])
     #event = nessie.Event(0, np.array([event0.pos[n]]), np.array([event0.dE[n]]), np.array([event0.times[n]]))
-    event = Events[0]
-    Events = [event, None,]
+    #event = Events[0]
+    Events = [event]
 
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
@@ -98,6 +98,9 @@ def main():
     plt.show()
 
     #downsampling
+    nabPy_events = saveEventsNabPy(Events, "nabPyevents")
+    
+    events_loaded = loadEventsNabPy("nabPyevents.pkl")
 
     #add noise
 

@@ -7,41 +7,58 @@ def CoulombForce(q1, q2, pos1, pos2, safety = 7e-9):
     Fs = -kE*q1*q2/r2/epsR
     return Fs*(pos2-pos1)/r2**0.5
 
-def getDriftStep(angle, d, dt):
-    #print(d, dt)
-    sigma1, sigma2, sigma3 = np.random.standard_normal(3)*(2*d*dt)**0.5
-    #dxd = np.cos(angle)*sigma1 - np.sin(angle)*sigma2
-    #dyd = np.sin(angle)*sigma1 + np.cos(angle)*sigma2
-    return sigma1, sigma2, sigma3
-    
-def getDriftStep2(angle, d, dt, rand_step):
-    #print(d, dt)
-    sigma1, sigma2, sigma3 = rand_step*(2*d*dt)**0.5
-    #dxd = np.cos(angle)*sigma1 - np.sin(angle)*sigma2
-    #dyd = np.sin(angle)*sigma1 + np.cos(angle)*sigma2
-    return sigma1, sigma2, sigma3
-
-def getEffectiveCoulombField(objects, dt):
-    acc = np.zeros((len(objects), DIMENSIONS))
+def getEffectiveCoulombField(objects):
+    Ecoul = np.zeros((len(objects), 3))
     for i in range(len(objects)):
         Q = objects[i].q
-        M = objects[i].m
-        a = np.zeros(DIMENSIONS)
+        F = np.zeros(3)
         for j in range(len(objects)):
             if i != j:
-                a+= calcForce(Q, objects[j].q, objects[i].pos[-1], objects[j].pos[-1])/M
-        acc[i] = a
+                F+= coulombForce(Q, objects[j].q, objects[i].pos[-1], objects[j].pos[-1])
+            Ecoul[i] = F/Q
+    return Ecoul
 
-def updateQuasiparticles(objects, dt, extField = np.zeros(DIMENSIONS), temp=300):
+def insideBoundaryCheck(pos, bounds):
+    return ((pos[0] >= bounds[0][0]) & (pos[0] <= bounds[0][1]) & (pos[1] >= bounds[1][0]) & (pos[1] <= bounds[1][1])
+            & (pos[2] >= bounds[2][0]) & (pos[2] <= bounds[2][1]))
+
+def updateQuasiParticles(objects, dt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffusion=True, coulomb=False, tauTrap = lambda x, y, z : 1e9, NI = lambda x, y, z : 1e10):
+    #Vector to save the effective electric field for each particle at the time step
+    Eeff = np.zeros((len(objects), 3))
+
+    # If coulomb is enabled, an effective electric field because of all other charges is added (plasma effects)
+    if coulomb:
+        Eeff += getEffectiveCoulombField(objects)
+
     for i in range(len(objects)):
-        Eeff = extField + acc[i]*objects[i].m/objects[i].q/100 # factor 100 is to convert is to V/cm instead of V/m
-        mu = mobility(mu0_el(temp) if objects[i].q < 0 else mu0_h(temp), np.linalg.norm(Eeff), beta, vs)
-        dv = mu*Eeff/100*objects[i].q/abs(objects[i].q) # factor 100 is to convert from cm/s to m/s
-        dv += ((D_el(temp) if objects[i].q < 0 else D_h(temp))/dt)**0.5/100*np.random.normal(size=3)
+        pos = objects[i].pos[-1]
+
+        Eeff[i] += np.array([Ex_i(pos), Ey_i(pos), Ez_i(pos)])
+
+        mu = generalized_mobility_el(temp, NI(*pos), np.linalg.norm(Eeff[i])) if objects[i].q < 0 else generalized_mobility_h(temp, NI(*pos), np.linalg.norm(Eeff[i]))
+
+        dv = mu*Eeff[i]*np.sign(objects[i].q)
+        if diffusion:
+            dv += ((diffusion_electron(temp) if objects[i].q < 0 else diffusion_hole(temp))/dt)**0.5*np.random.normal(size=3)
+
+        objects[i].addTime(objects[i].time[-1]+dt)
         objects[i].addVel(dv)
         objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
 
-def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, electron=True, interp3d=False):
+        #Check if particles are still inside the specified boundaries, otherwise kill them
+        objects[i].alive = insideBoundaryCheck(objects[i].pos[-1], bounds)
+
+        #Check whether a particle is captured. If so, the particle is killed. 
+        #dt must be substantially smaller than tauTrap in order for Poisson process to work
+        p = dt/tauTrap(*(objects[i].pos[-1]))
+        r = np.random.random()
+        if r < p:
+            objects[i].alive = False
+
+    return objects
+
+
+'''def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap = lambda x,y,z: 1e9, d=None, NI=lambda x, y,z: 1e10, diffusion=False, electron=True, interp3d=False):
     rand_steps = np.random.standard_normal(size=(10000,3))
     x = [x0, ]
     y = [y0, ]
@@ -126,7 +143,7 @@ def propagateCarrier(x0, y0, z0, eps, Ex_i, Ey_i, Ez_i, E_i, bounds, T, tauTrap 
         
         #print(x[-1], y[-1], t[-1])
         
-    return x, y, z, t
+    return x, y, z, t'''
 
 if __name__ == "__main__":
     x, y, z, t = propagateCarrier(0, 0, 0, 1e-4, lambda a : [0,], lambda a : [0,], lambda a: [-750e2,], lambda a : [-750e2,], [[-1, 1], [-1, 1], [0, 0.002]], 130, diffusion=True)

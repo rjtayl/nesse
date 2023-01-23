@@ -4,9 +4,14 @@ import numpy as np
 #Note everything is in meters. This is not standard in the literature on mobility.
 
 beta_el = 1 # beta coefficient in electron mobility parametrization according to Knoll
-vstar = 2.4e5 # m/s
-Theta = 600 # K
-C = 0.8
+beta_h = 2
+vstar_el = 2.4e5 # m/s
+Theta_el = 600 # K
+C_el = 0.8
+# TODO: Hole values are just sort of copy pasted, needs to be actually checked
+vstar_h = 1e5 # m/s
+Theta_h = 600 # K
+C_h = 0.8
 D0_el = 0.0036 # m^2/s
 D0_h = 0.0012 # m^2/s
 
@@ -18,7 +23,10 @@ def mu0_h(T):
 
 # Temperature-dependent saturation velocity
 def vs_el(T): 
-    return vstar/(1+C*np.exp(T/Theta)) 
+    return vstar_el/(1+C_el*np.exp(T/Theta_el))
+
+def vs_h(T):
+    return vstar_h/(1+C_h*np.exp(T/Theta_h))
 
 def diffusion_electron(T):
     return D0_el*(T/300)**-1.01
@@ -49,6 +57,11 @@ def generalized_mobility_el(T, NI, E):
     mu = 1/(1/mu0_el(T)+1/(mu_I(T, NI)))
     vsat = vs_el(T)
     return mu/(1+(mu*E/vsat)**(1/beta_el))**beta_el
+
+def generalized_mobility_h(T, NI, E):
+    mu = 1/(1/mu0_h(T)+1/(mu_I(T, NI)))
+    vsat = vs_h(T)
+    return mu/(1+(mu*E/vsat)**(1/beta_h))**beta_h
 
 def generalized_diffusion_el(T, NI, E):
     return mobility(T, NI, E)*T*kB

@@ -1,5 +1,7 @@
 import numpy as np
+from itertools import compress
 from .field import *
+from .quasiparticles import *
 from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
 from tqdm.notebook import tqdm
@@ -77,7 +79,7 @@ class Simulation:
         self.electronicResponse = {"times":ts, "step":step}
         return None
 
-    def simulate(self, events, eps=1e-4, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=500, parallel=False):
+    def simulate(self, events, dt, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, parallel=False):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -87,58 +89,52 @@ class Simulation:
         '''
     
         # Get electric field interpolations
-        eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = self.electricField.interpolate(interp3d)
-        #eFieldx_interp = lambda x: [0,]
-        #eFieldy_interp = lambda x: [0,]
-        #eFieldz_interp = lambda x: [-750e2,]
-        #eFieldMag_interp = lambda x: [750e2,]
+        Ex_i, Ey_i, Ez_i, Emag_i = self.electricField.interpolate(interp3d)
         
         simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
-        
+
         #Find electron and hole drift paths for each event
-        print("drifting events:")
         for i in range(len(events)):
-            print("Event %i" % (i))
-            event=events[i]
-            new_pos = []
-            new_times = []
-            new_pos_h = []
-            new_times_h = []
+            event = events[i]
             #rint will give an integer number of e-h pairs, but will need to use Fano factor for a proper calculation
             pairs = np.rint(event.dE/ephBestFit(self.temp))
 
+            # electron charge cloud assembly
+            cc_e = []
+            # hole charge cloud assembly
+            cc_h = []
+
+            # Add charge cloud parts at each position where energy was deposited
             for j in tqdm(range(len(event.pos))):
-                if parallel:
-                    pair_pos = Parallel(n_jobs=num_cores,prefer="threads")(delayed(propagateCarrier)(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, interp3d=interp3d) for k in range(int(pairs[j])))
-                    
-                    for pair in pair_pos:
-                        new_pos.append(np.stack((pair[0],pair[1],pair[2]), axis=-1))
-                        new_times.append(pair[3])
-                        
-                    pair_pos_h = Parallel(n_jobs=num_cores,prefer="threads")(delayed(propagateCarrier)(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, electron=False, interp3d=interp3d) for k in range(int(pairs[j])))
-                    
-                    for pair in pair_pos_h:
-                        new_pos_h.append(np.stack((pair[0],pair[1],pair[2]), axis=-1))
-                        new_times_h.append(pair[3])
-                else:
-                    for k in tqdm(range(int(pairs[j]))):
-                        x,y,z,t = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
-                                                eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion, interp3d=interp3d)
-                        new_pos.append(np.stack((x,y,z), axis=-1))
-                        new_times.append(t)
-                    
-                        x_h,y_h,z_h,t_h = propagateCarrier(event.pos[j][0], event.pos[j][1], event.pos[j][2], eps, eFieldx_interp, eFieldy_interp, 
-                                                eFieldz_interp, eFieldMag_interp, simBounds, self.temp,d=d, diffusion=diffusion,electron=False, interp3d=interp3d)
-                        new_pos_h.append(np.stack((x_h,y_h,z_h), axis=-1))
-                        new_times_h.append(t_h)
-                
-            event.setDriftPaths(new_pos,new_times)
-            event.setDriftPaths(new_pos_h,new_times_h,electron=False)
-            
-            #get drift velocities
-            event.getDriftVelocities()
-        
-        #get induced current
+                pairNr = int(pairs[j])
+                factor = 1
+                if pairNr > maxPairs:
+                    factor = pairNr/maxPairs
+                    pairNr = maxPairs
+
+                # TODO: Provide a radius to smooth initial charge cloud (currently 0)
+                cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+                cc_h = cc_h + initializeChargeCloud(factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+
+            cc = cc_e + cc_h
+
+            alive = np.ones(len(cc)) == 1
+
+            # Loop over alive particles until all have been stopped/collected
+            while np.any(alive):
+                cc_new = updateQuasiParticles(list(compress(cc, alive)), dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
+                counter = 0
+                for j in range(len(alive)):
+                    if alive[j]:
+                        cc[j] = cc_new[counter]
+                        counter+=1
+
+                alive = np.array([o.alive for o in cc])
+
+            event.quasiparticles = cc
+
+
+        '''#get induced current
         print("calculating induced current")
         
         if self.weightingField is None: self.setWeightingField()
@@ -148,6 +144,4 @@ class Simulation:
             
         if self.electronicResponse is not None:
                 for event in events:
-                    event.convolveElectronicResponse(self.electronicResponse)
-            
-        return None
+                    event.convolveElectronicResponse(self.electronicResponse)'''

@@ -18,7 +18,7 @@ def main():
     #import G4 events
     events_filename = "config/Events/e-_800keV_0inc.root"
     Events = nessie.eventsFromG4root(events_filename)
-    #print("%d events loaded" %(len(Events)))
+    print("%d events loaded" %(len(Events)))
 
     #event = nessie.Event(0, np.array([[0, 0, 0], [0.001, 0, 0.0001]]), np.array([2000, 1000]), np.array([0, 0]))
     #event = nessie.Event(0, np.array([[0.001, 0, 0.001],]), np.array([40,]), np.array([0, ]))
@@ -28,7 +28,7 @@ def main():
     event = nessie.Event(0, event0.pos[:n], event0.dE[:n], event0.times[:n])
     #event = nessie.Event(0, np.array([event0.pos[n]]), np.array([event0.dE[n]]), np.array([event0.times[n]]))
     #event = Events[0]
-    Events = [event]
+    Events = [event,]
 
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
@@ -71,7 +71,10 @@ def main():
     
     #simulate without diffusion
     i=1
-    sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True, parallel=True)
+    sim.simulate(Events[:i], dt=1e-9, interp3d=True, diffusion=True, parallel=True)
+    print(Events[0].quasiparticles)
+    print(Events[0].quasiparticles[0].pos)
+    print(Events[0].quasiparticles[0].time)
     #nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #cProfile.runctx('sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True)', {'sim':sim, 'Events':Events, 'i':i},{}, 'sim_stats')

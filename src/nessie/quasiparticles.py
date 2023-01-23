@@ -1,15 +1,21 @@
+import numpy as np
+from scipy.stats import maxwell
+
 class Quasiparticle:
     '''
     Container object for a generalized quasiparticle with arbitrary mass and charge.
     Tracks position and velocity.
     '''
-    def __init__(self, q, m, pos0, vel0):
+    def __init__(self, q, m, t0, pos0, vel0):
         self.q = q
         self.m = m
-        self.pos = []
-        self.vel = []
-        self.pos.append(pos0)
-        self.vel.append(vel0)
+        self.pos = [pos0,]
+        self.vel = [vel0,]
+        self.time = [t0,]
+        self.alive = True
+
+    def addTime(self, t):
+        self.time.append(t)
 
     def addPos(self, pos):
         self.pos.append(pos)
@@ -18,8 +24,10 @@ class Quasiparticle:
         self.vel.append(vel)
 
     def reset(self):
+        t0 = self.time[0]
         p0 = self.pos[0]
         v0 = self.vel[0]
+        self.t0 = [t0, ]
         self.pos = [p0, ]
         self.vel = [v0, ]
 
@@ -32,7 +40,7 @@ def unitSphereVector(N):
     theta = np.arccos(z)
     return np.array([np.sin(theta)*np.cos(phi), np.sin(theta)*np.sin(phi), z]).T
 
-def initializeChargeCloud(q, m, N, R, R0):
+def initializeChargeCloud(q, m, N, t0, R, R0):
     '''
     Create a list of Quasiparticle objects along a path smeared with a gaussian distribution
     :param q: charge in Coulomb of individual quasiparticle
@@ -41,11 +49,13 @@ def initializeChargeCloud(q, m, N, R, R0):
     :param R: Radius of gaussian smoothing (sigma)
     :param R0: either (DIMENSIONS) array or (N, DIMENSIONS) array describing initial positions
     '''
-    pos = R0 + R*np.random.normal(size=(N, DIMENSIONS))
-    velS = maxwell.rvs(size=N, scale=scale)
+    pos = R0 + R*np.random.normal(size=(N, 3))
+    #velS = maxwell.rvs(size=N, scale=scale)
+    #TODO fix scale for Maxwell
+    velS = np.zeros(N)
     velDir = unitSphereVector(N)
     
     cc = []
     for i in range(N):
-        cc.append(Quasiparticle(q, m, pos[i], velS[i]*velDir[i]))
+        cc.append(Quasiparticle(q, m, t0, pos[i], velS[i]*velDir[i]))
     return cc

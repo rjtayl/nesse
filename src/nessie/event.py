@@ -26,15 +26,8 @@ class Event:
         self.dQ = []
         self.dI = []
         self.dt = []
-        
-        self.pos_drift_e = None
-        self.times_drift_e = None
-        
-        self.pos_drift_h = None
-        self.times_drift_h = None
-        
-        self.vel_drift_e = None
-        self.vel_drift_h = None
+
+        self.quasiparticles = []
         
         self.signal_I = None
         self.signal_times = None
@@ -49,50 +42,34 @@ class Event:
         
         return None
         
-    def setDriftPaths(self, pos, times, electron=True):
-        if electron:
-            self.pos_drift_e = pos
-            self.times_drift_e = times
-            print("Drift paths length: %d" % len(self.pos_drift_e))
-        else:
-            self.pos_drift_h = pos
-            self.times_drift_h = times
-        return None
-        
     def convertUnits(self, energyConversionFactor, lengthConversionFactor, timeConversionFactor):
         self.dE *= energyConversionFactor
         self.pos *= lengthConversionFactor
         self.times *= timeConversionFactor
         return None
         
-    def getDriftVelocities(self):
-        vel_drift_e = []
-        vel_drift_h = []
-        for i in range(len(self.pos_drift_e)):
-            pos = self.pos_drift_e[i]
-            pos_e = [pos[:,0], pos[:,1], pos[:,2]]
-            dx,dy,dz = np.diff(pos_e)/np.diff(self.times_drift_e[i])
-            vel_drift_e.append(np.stack((dx,dy,dz),axis=-1))
-        
-        for i in range(len(self.pos_drift_h)):
-            pos = self.pos_drift_h[i]
-            pos_h = [pos[:,0], pos[:,1], pos[:,2]]
-            dx,dy,dz = np.diff(pos_h)/np.diff(self.times_drift_h[i])
-            vel_drift_h.append(np.stack((dx,dy,dz),axis=-1))
-            
-        self.vel_drift_e = vel_drift_e
-        self.vel_drift_h = vel_drift_h
-        return None
-        
     def calculateInducedCurrent(self,weightingField, dt, interp3d=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d=interp3d)
+
+        max_time = max([o.time[-1] for o in self.quasiparticles])
         
-        max_time = max([max([times[-1] for times in self.times_drift_e]),max([times[-1] for times in self.times_drift_h])])
+        #max_time = max([max([times[-1] for times in self.times_drift_e]),max([times[-1] for times in self.times_drift_h])])
         times_I = np.arange(0,max_time,dt)
         
         induced_I = np.zeros(len(times_I))
 
-        for i in tqdm(range(len(self.vel_drift_e))):
+        for i in range(len(quasiparticles)):
+            o = quasiparticles[i]
+            Is = [o.q*np.dot(o.vel[j],
+                        [weightingFieldx_interp(o.pos[j]),
+                         weightingFieldy_interp(o.pos[j]),
+                         weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+
+            if len(Is) > 0:
+                func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                induced_I += func_I(times_I)
+
+        '''for i in tqdm(range(len(self.vel_drift_e))):
             if interp3d:
                 Is = [-qe_SI*np.dot(self.vel_drift_e[i][j], 
                         [weightingFieldx_interp(self.pos_drift_e[i][j]),
@@ -127,7 +104,7 @@ class Event:
 
             if len(Is)>1:
                 func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
+                induced_I += func_I(times_I)'''
         
         self.dI = induced_I
         self.dt = times_I

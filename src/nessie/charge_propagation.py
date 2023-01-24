@@ -4,7 +4,7 @@ import numpy as np
 
 def CoulombForce(q1, q2, pos1, pos2, safety = 7e-9):
     r2 = max(safety**2, sum((pos1-pos2)**2))
-    Fs = -kE*q1*q2/r2/epsR
+    Fs = -kE_SI*q1*q2/r2/epsR_Si
     return Fs*(pos2-pos1)/r2**0.5
 
 def getEffectiveCoulombField(objects):
@@ -14,7 +14,7 @@ def getEffectiveCoulombField(objects):
         F = np.zeros(3)
         for j in range(len(objects)):
             if i != j:
-                F+= coulombForce(Q, objects[j].q, objects[i].pos[-1], objects[j].pos[-1])
+                F+= CoulombForce(Q, objects[j].q, objects[i].pos[-1], objects[j].pos[-1])
             Ecoul[i] = F/Q
     return Ecoul
 

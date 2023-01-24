@@ -23,12 +23,12 @@ def main():
     #event = nessie.Event(0, np.array([[0, 0, 0], [0.001, 0, 0.0001]]), np.array([2000, 1000]), np.array([0, 0]))
     #event = nessie.Event(0, np.array([[0.001, 0, 0.001],]), np.array([40,]), np.array([0, ]))
     
-    n=-1
-    event0 = Events[0]
-    event = nessie.Event(0, event0.pos[:n], event0.dE[:n], event0.times[:n])
+    #n = -1
+    #event0 = Events[0]
+    #event = nessie.Event(0, event0.pos[:n], event0.dE[:n], event0.times[:n])
     #event = nessie.Event(0, np.array([event0.pos[n]]), np.array([event0.dE[n]]), np.array([event0.times[n]]))
     #event = Events[0]
-    Events = [event,]
+    #Events = [event,]
 
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
@@ -70,14 +70,15 @@ def main():
     #simulate events
     
     #simulate without diffusion
-    i=1
-    sim.simulate(Events[:i], eps=1e-4, dt=10e-9, interp3d=True, diffusion=True, maxPairs=50)
+    i=5
+    events = sim.simulate(Events[:i], eps=5e-5, dt=10e-9, interp3d=True, diffusion=True, plasma=False, maxPairs=10)
     #print(Events[0].quasiparticles)
     #print(Events[0].quasiparticles[0].pos)
     #print(Events[0].quasiparticles[0].time)
     #print(len(Events[0].quasiparticles[0].pos), len(Events[0].quasiparticles[0].time))
     sim.setWeightingField()
-    Events[0].calculateInducedCurrent(sim.weightingField, 1e-10)
+    sim.calculateInducedCurrent(events, 1e-10)
+    sim.calculateElectronicResponse(events)
     #nessie.plot_event_drift(Events[0],[[-0.001,0.001],[-0.001,0.001],[0,0.002]])
     
     #cProfile.runctx('sim.simulate(Events[:i], eps=1e-4, interp3d=True, diffusion=True)', {'sim':sim, 'Events':Events, 'i':i},{}, 'sim_stats')
@@ -104,9 +105,9 @@ def main():
     plt.show()
 
     #downsampling
-    nabPy_events = saveEventsNabPy(Events, "nabPyevents")
+    #nabPy_events = saveEventsNabPy(Events, "nabPyevents")
     
-    events_loaded = loadEventsNabPy("nabPyevents.pkl")
+    #events_loaded = loadEventsNabPy("nabPyevents.pkl")
 
     #add noise
 

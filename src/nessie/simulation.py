@@ -95,7 +95,7 @@ class Simulation:
         simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
 
         #Find electron and hole drift paths for each event
-        for i in range(len(events)):
+        for i in tqdm(range(len(events))):
             event = events[i]
             #rint will give an integer number of e-h pairs, but will need to use Fano factor for a proper calculation
             pairs = np.rint(event.dE/ephBestFit(self.temp))
@@ -142,6 +142,15 @@ class Simulation:
 
             event.quasiparticles = cc
             #lp.print_stats()
+        return events
+
+    def calculateInducedCurrent(self, events, dt):
+        for event in events:
+            event.calculateInducedCurrent(self.weightingField, dt, interp3d=True)
+
+    def calculateElectronicResponse(self, events):
+        for event in events:
+            event.convolveElectronicResponse(self.electronicResponse)
 
 
         '''#get induced current
@@ -155,3 +164,4 @@ class Simulation:
         if self.electronicResponse is not None:
                 for event in events:
                     event.convolveElectronicResponse(self.electronicResponse)'''
+

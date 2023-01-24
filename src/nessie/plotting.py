@@ -18,29 +18,23 @@ def plot_signal(event, show_plot=True, alpha=1):
     return None
 
 
-def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True, pairs=None):
+def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True, pairs=None, save=False):
     fig = plt.figure()
     ax = plt.axes(projection ='3d')
     
-    N = len(event.pos_drift_e) if pairs == None else pairs
+    N = len(event.quasiparticles) if pairs == None else 2*pairs
     
-    try:
-	    for i in range(N):
-	        x = event.pos_drift_e[i][:,0]
-	        y = event.pos_drift_e[i][:,1]
-	        z = event.pos_drift_e[i][:,2]
-	        ax.plot3D(x, y, z, 'green')
-    except: print("No electron drift paths")
-	
     try:
         for i in range(N):
-            x = event.pos_drift_h[i][:,0]
-            y = event.pos_drift_h[i][:,1]
-            z = event.pos_drift_h[i][:,2]
-            ax.plot3D(x, y, z, 'red')
-    except: print("No hole drift paths")
+            pos = np.array(event.quasiparticles[i].pos)
+
+            if event.quasiparticles[i].q < 0:
+	            ax.plot3D(pos[:, 0], pos[:, 1], pos[:, 2], 'green')
+            else:
+                ax.plot3D(pos[:, 0], pos[:, 1], pos[:, 2], 'red')
+    except: 
+        print("No electron drift paths")
 	
-    
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
     ax.set_zlabel('Z')
@@ -50,7 +44,7 @@ def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True, pairs=N
     
     if show_plot: plt.show()
     
-    plt.savefig(prefix+"drift_path" +suffix + ".png")
+    if save: plt.savefig(prefix+"drift_path" +suffix + ".png")
     return None
     
 def plot_field_lines(field, mesh_size = (500,500), x_plane = True, density = 2,

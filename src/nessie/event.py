@@ -48,18 +48,17 @@ class Event:
         self.times *= timeConversionFactor
         return None
         
-    def calculateInducedCurrent(self,weightingField, dt, interp3d=False):
+    def calculateInducedCurrent(self, weightingField, dt, interp3d=True):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d=interp3d)
 
         max_time = max([o.time[-1] for o in self.quasiparticles])
         
-        #max_time = max([max([times[-1] for times in self.times_drift_e]),max([times[-1] for times in self.times_drift_h])])
         times_I = np.arange(0,max_time,dt)
         
         induced_I = np.zeros(len(times_I))
 
-        for i in range(len(quasiparticles)):
-            o = quasiparticles[i]
+        for i in range(len(self.quasiparticles)):
+            o = self.quasiparticles[i]
             Is = [o.q*np.dot(o.vel[j],
                         [weightingFieldx_interp(o.pos[j]),
                          weightingFieldy_interp(o.pos[j]),

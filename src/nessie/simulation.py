@@ -4,13 +4,14 @@ from .field import *
 from .quasiparticles import *
 from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
-from tqdm.notebook import tqdm
+from tqdm import tqdm
 import csv
 from .silicon import *
-from joblib import Parallel, delayed
-import multiprocessing
+from line_profiler import LineProfiler
+#from joblib import Parallel, delayed
+#import multiprocessing
 
-num_cores = multiprocessing.cpu_count()
+#num_cores = multiprocessing.cpu_count()
 
 class Simulation:
     '''
@@ -79,7 +80,7 @@ class Simulation:
         self.electronicResponse = {"times":ts, "step":step}
         return None
 
-    def simulate(self, events, dt, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, parallel=False):
+    def simulate(self, events, eps, dt, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -119,10 +120,17 @@ class Simulation:
             cc = cc_e + cc_h
 
             alive = np.ones(len(cc)) == 1
+            print("Total quasiparticles: %d" % len(cc))
+
+            #lp = LineProfiler()
+            #lp.add_function(generalized_mobility_el)
+            #lp_wrapper = lp(updateQuasiParticles)
 
             # Loop over alive particles until all have been stopped/collected
+            pbar = tqdm()
             while np.any(alive):
-                cc_new = updateQuasiParticles(list(compress(cc, alive)), dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
+                cc_new = updateQuasiParticles(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
+                #cc_new = lp_wrapper(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
                 counter = 0
                 for j in range(len(alive)):
                     if alive[j]:
@@ -130,8 +138,10 @@ class Simulation:
                         counter+=1
 
                 alive = np.array([o.alive for o in cc])
+                pbar.update(1)
 
             event.quasiparticles = cc
+            #lp.print_stats()
 
 
         '''#get induced current

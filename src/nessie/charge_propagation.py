@@ -22,7 +22,7 @@ def insideBoundaryCheck(pos, bounds):
     return ((pos[0] >= bounds[0][0]) & (pos[0] <= bounds[0][1]) & (pos[1] >= bounds[1][0]) & (pos[1] <= bounds[1][1])
             & (pos[2] >= bounds[2][0]) & (pos[2] <= bounds[2][1]))
 
-def updateQuasiParticles(objects, dt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffusion=True, coulomb=False, tauTrap = lambda x, y, z : 1e9, NI = lambda x, y, z : 1e10):
+def updateQuasiParticles(objects, eps, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffusion=True, coulomb=False, tauTrap = lambda x, y, z : 1e9, NI = lambda x, y, z : 1e10):
     #Vector to save the effective electric field for each particle at the time step
     Eeff = np.zeros((len(objects), 3))
 
@@ -32,12 +32,20 @@ def updateQuasiParticles(objects, dt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffu
 
     for i in range(len(objects)):
         pos = objects[i].pos[-1]
+        dt = maxdt
 
         Eeff[i] += np.array([Ex_i(pos), Ey_i(pos), Ez_i(pos)])
 
-        mu = generalized_mobility_el(temp, NI(*pos), np.linalg.norm(Eeff[i])) if objects[i].q < 0 else generalized_mobility_h(temp, NI(*pos), np.linalg.norm(Eeff[i]))
+        if objects[i].q < 0:
+            mu = generalized_mobility_el(temp, NI(*pos), np.linalg.norm(Eeff[i]))
+            dv = -mu*Eeff[i]
+        else:
+            mu = generalized_mobility_h(temp, NI(*pos), np.linalg.norm(Eeff[i]))
+            dv = mu*Eeff[i]
 
-        dv = mu*Eeff[i]*np.sign(objects[i].q)
+        if not coulomb:
+            dt = min(abs(eps/np.linalg.norm(dv)), maxdt)
+
         if diffusion:
             dv += ((diffusion_electron(temp) if objects[i].q < 0 else diffusion_hole(temp))/dt)**0.5*np.random.normal(size=3)
 

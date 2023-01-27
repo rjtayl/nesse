@@ -7,7 +7,9 @@ from .charge_propagation import *
 from tqdm import tqdm
 import csv
 from .silicon import *
-from line_profiler import LineProfiler
+
+#from line_profiler import LineProfiler
+
 #from joblib import Parallel, delayed
 #import multiprocessing
 

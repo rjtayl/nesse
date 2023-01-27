@@ -1,0 +1,39 @@
+[build-system]
+requires = ["setuptools", "cython"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nesse"
+version = "0.0.1"
+authors = [
+    {name = "RJ Taylor", email = "rjtaylo2@ncsu.edu"},
+    {name = "Leendert Hayen", email = "hayen@lpccaen.in2p3.fr"}  
+]
+description = "A solid state detector simulation developed for the Nab experiment."
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "scipy.interpolate",
+    "tqdm",
+    "pickle",
+    "csv",
+    "itertools",
+    "cython",
+    "matplotlib",
+    "mpl_toolkits",
+    "scipy.stats",
+    "numba",
+    "h5py",
+    "uproot",
+    "pandas"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/rjtayl/nessie"
+"Bug Tracker" = "https://github.com/rjtayl/nessie/issues"

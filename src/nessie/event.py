@@ -42,6 +42,11 @@ class Event:
         
         return None
         
+    def addGaussianNoise(self, sigma=1, SNR=None):
+        if SNR is not None:
+            sigma = np.max(np.abs(self.signal_I))/SNR
+        self.signal_I += np.random.normal(0, sigma , len(self.signal_I))   
+        
     def convertUnits(self, energyConversionFactor, lengthConversionFactor, timeConversionFactor):
         self.dE *= energyConversionFactor
         self.pos *= lengthConversionFactor

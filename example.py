@@ -61,6 +61,10 @@ def main():
     sim.calculateInducedCurrent(events, 1e-10)
     sim.calculateElectronicResponse(events)
     
+    #add noise
+    for event in Events[:i]:
+        event.addGaussianNoise(SNR=20)
+    
     #plot induced current
     for event in Events[:i]:
         plt.plot(event.dt,event.dI, alpha=0.2)
@@ -71,15 +75,17 @@ def main():
         plt.plot(event.signal_times,event.signal_I)
     plt.show()
 
-    for event in Events[:i]:
-        nessie.plot_event_drift(event, [[-0.001,0.001],[-0.001,0.001],[0,0.002]])
+    #for event in Events[:i]:
+    #    nessie.plot_event_drift(event, [[-0.001,0.001],[-0.001,0.001],[0,0.002]])
+        
+    
 
     #downsampling
     #nabPy_events = saveEventsNabPy(Events, "nabPyevents")
     
     #events_loaded = loadEventsNabPy("nabPyevents.pkl")
 
-    #add noise
+    
 
     print("Done")
     

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nesse"
-version = "0.0.1"
+version = "0.0.14"
 authors = [
     {name = "RJ Taylor", email = "rjtaylo2@ncsu.edu"},
     {name = "Leendert Hayen", email = "hayen@lpccaen.in2p3.fr"}  
@@ -14,22 +14,17 @@ readme = "README.md"
 requires-python = ">=3.7"
 classifiers = [
     "Programming Language :: Python :: 3",
-    "License :: MIT License",
+    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Physics"
 ]
 dependencies = [
     "numpy",
-    "scipy.interpolate",
+    "scipy",
     "tqdm",
-    "pickle",
-    "csv",
-    "itertools",
     "cython",
     "matplotlib",
-    "mpl_toolkits",
-    "scipy.stats",
     "numba",
     "h5py",
     "uproot",

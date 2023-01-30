@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.append(os.getcwd()+"/src/")
-import nessie
+import nesse
 import numpy as np
 import matplotlib.pyplot as plt
 import cProfile
@@ -14,7 +14,7 @@ def main():
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
 
-    Efield=nessie.eFieldFromH5(EF_filename)  
+    Efield=nesse.eFieldFromH5(EF_filename)  
 
     eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = Efield.interpolate(True)
     

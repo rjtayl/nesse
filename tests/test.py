@@ -1,7 +1,7 @@
 import os
 import sys
 sys.path.append(os.getcwd()+"/src/")
-import nessie
+import nesse
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import RegularGridInterpolator 
@@ -12,7 +12,7 @@ def main():
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
     WP_filename = "config/Fields/NessieWP_4e7Linear0-150V_grid.hf"
 
-    Efield=nessie.eFieldFromH5(EF_filename)  
+    Efield=nesse.eFieldFromH5(EF_filename)  
     weightingPotential = nessie.weightingPotentialFromH5(WP_filename)
 
     x = weightingPotential.grid[0].astype("double")
@@ -21,7 +21,7 @@ def main():
     
     v = weightingPotential.data.astype("double",order="C")
     
-    interp = nessie.Interp3D(v,x,y,z)
+    interp = nesse.Interp3D(v,x,y,z)
     interp_si = RegularGridInterpolator((x,y,z),v)
     
     zs = np.linspace(-0.001,0.003, 1000)

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "cython"]
+requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -16,6 +16,8 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: MIT License",
     "Operating System :: OS Independent",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Physics"
 ]
 dependencies = [
     "numpy",
@@ -35,5 +37,5 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/rjtayl/nessie"
-"Bug Tracker" = "https://github.com/rjtayl/nessie/issues"
+"Homepage" = "https://github.com/rjtayl/nesse"
+"Bug Tracker" = "https://github.com/rjtayl/nesse/issues"

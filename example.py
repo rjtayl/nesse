@@ -2,7 +2,7 @@
 import os
 import sys
 sys.path.append(os.getcwd()+"/src/")
-import nessie
+import nesse
 import numpy as np
 import matplotlib.pyplot as plt
 import csv
@@ -10,22 +10,22 @@ import cProfile
 import pstats
 from pstats import SortKey
 
-from src.nessie.event import *
+from src.nesse.event import *
 
 #example/testing of basic functionality
 
 def main():
     #import G4 events
     events_filename = "config/Events/e-_800keV_0inc.root"
-    Events = nessie.eventsFromG4root(events_filename)
+    Events = nesse.eventsFromG4root(events_filename)
     print("%d events loaded" %(len(Events)))
 
     #import SSD fields
     EF_filename = "config/Fields/NessieEF_4e7Linear0-150V_grid.hf"
     WP_filename = "config/Fields/NessieWP_4e7Linear0-150V_grid.hf"
 
-    Efield=nessie.eFieldFromH5(EF_filename)  
-    weightingPotential = nessie.weightingPotentialFromH5(WP_filename)
+    Efield=nesse.eFieldFromH5(EF_filename)  
+    weightingPotential = nesse.weightingPotentialFromH5(WP_filename)
 
     print(weightingPotential,Efield)
 
@@ -33,12 +33,12 @@ def main():
     bounds = np.stack((ef_bounds[0],ef_bounds[1],[0,0.002]))
     
     #plot fields
-    nessie.plot_field_lines(Efield,x_plane=True, density=2, show_plot=True)
-    nessie.plot_potential(weightingPotential, bounds=bounds, x_plane=True, show_plot=True, mesh_size=(330,330))
+    nesse.plot_field_lines(Efield,x_plane=True, density=2, show_plot=True)
+    nesse.plot_potential(weightingPotential, bounds=bounds, x_plane=True, show_plot=True, mesh_size=(330,330))
     
     
     #create simulation
-    sim = nessie.Simulation("Example_sim", Efield, weightingPotential)
+    sim = nesse.Simulation("Example_sim", Efield, weightingPotential)
     
     #import electronic response from spice
     spiceFile= "config/Spice/spice_step_New_1ns.csv"

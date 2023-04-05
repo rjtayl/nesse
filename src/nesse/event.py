@@ -31,6 +31,11 @@ class Event:
         
         self.signal_I = None
         self.signal_times = None
+
+    def shift_pos(self,new_pos=[0,0,0]):
+        shift = np.array(new_pos) - self.pos[0]
+        self.pos = self.pos + shift
+        return None
         
     def convolveElectronicResponse(self, electronicResponse):
         func_I = interp1d(self.dt, self.dI, bounds_error=False, fill_value=0)
@@ -55,10 +60,10 @@ class Event:
         
     def calculateInducedCurrent(self, weightingField, dt, interp3d=True):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d=interp3d)
-
-        max_time = max([o.time[-1] for o in self.quasiparticles])
         
-        times_I = np.arange(0,max_time,dt)
+        max_time = max([o.time[-1] for o in self.quasiparticles])
+        start_time = min([o.time[0] for o in self.quasiparticles])
+        times_I = np.arange(start_time,max_time,dt)
         
         induced_I = np.zeros(len(times_I))
 
@@ -111,7 +116,7 @@ class Event:
                 induced_I += func_I(times_I)'''
         
         self.dI = induced_I
-        self.dt = times_I
+        self.dt = times_I-start_time
         
         return None    
     
@@ -127,7 +132,7 @@ class Event:
         else:
             return np.pad(signal, (round(length/2),round(length/2)-len(signal)),"edge")
 
-def eventsFromG4root(filename):
+def eventsFromG4root(filename, pixel=None):
     import uproot
     import pandas
 
@@ -135,8 +140,11 @@ def eventsFromG4root(filename):
     tree = file["ntuple/hits"]
 
     try:
-        df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep"], 
+        df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber"], 
                          library="pd")
+        if pixel is not None:
+            df = df[df["pixelNumber"]==pixel]
+    
         gdf = df.groupby("eventID")
     except:
         #old formatting exception

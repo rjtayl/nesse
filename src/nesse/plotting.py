@@ -29,7 +29,7 @@ def plot_event_drift(event, bounds, prefix="",suffix="", show_plot=True, pairs=N
             pos = np.array(event.quasiparticles[i].pos)
 
             if event.quasiparticles[i].q < 0:
-	            ax.plot3D(pos[:, 0], pos[:, 1], pos[:, 2], 'green')
+                ax.plot3D(pos[:, 0], pos[:, 1], pos[:, 2], 'green')
             else:
                 ax.plot3D(pos[:, 0], pos[:, 1], pos[:, 2], 'red')
     except: 

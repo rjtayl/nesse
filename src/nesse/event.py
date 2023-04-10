@@ -24,26 +24,26 @@ class Event:
         self.times = _times
 
         self.dQ = []
-        self.dI = []
-        self.dt = []
+        self.dI = {}
+        self.dt = {}
 
         self.quasiparticles = []
         
-        self.signal_I = None
-        self.signal_times = None
+        self.signal_I = {}
+        self.signal_times = {}
 
     def shift_pos(self,new_pos=[0,0,0]):
         shift = np.array(new_pos) - self.pos[0]
         self.pos = self.pos + shift
         return None
         
-    def convolveElectronicResponse(self, electronicResponse):
-        func_I = interp1d(self.dt, self.dI, bounds_error=False, fill_value=0)
+    def convolveElectronicResponse(self, electronicResponse, contact=0):
+        func_I = interp1d(self.dt[contact], self.dI[contact], bounds_error=False, fill_value=0)
         temp_times = electronicResponse["times"]
         dt = np.diff(temp_times)[0]
         
-        self.signal_I = np.convolve(func_I(temp_times),electronicResponse["step"])
-        self.signal_times = np.arange(0,len(self.signal_I)*dt, dt)
+        self.signal_I[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])
+        self.signal_times[contact] = np.arange(0,len(self.signal_I)*dt, dt)
         
         return None
         
@@ -58,7 +58,7 @@ class Event:
         self.times *= timeConversionFactor
         return None
         
-    def calculateInducedCurrent(self, weightingField, dt, interp3d=True):
+    def calculateInducedCurrent(self, weightingField, dt, contact=0, interp3d=True):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d=interp3d)
         
         max_time = max([o.time[-1] for o in self.quasiparticles])
@@ -115,8 +115,8 @@ class Event:
                 func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
                 induced_I += func_I(times_I)'''
         
-        self.dI = induced_I
-        self.dt = times_I-start_time
+        self.dI[contact] = induced_I
+        self.dt[contact]=times_I-start_time
         
         return None    
     

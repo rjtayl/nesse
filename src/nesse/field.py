@@ -17,6 +17,10 @@ class Potential:
     def __str__(self):
         return ("Nessie Potential object \n Name: %s \n Size: %s \n" 
                 % (self.name, np.shape(self.data)))
+    
+    def shift(self, shift=(0,0,0)):
+        for i in [0,1,2]:
+            self.grid[i] = self.grid[i]+shift[i]
 
 class Field:
     '''
@@ -66,7 +70,7 @@ class Field:
             fieldMag_interp = RegularGridInterpolator((x,y,z),fieldMag)
         
         return fieldx_interp, fieldy_interp, fieldz_interp, fieldMag_interp
-
+ 
 
 def weightingPotentialFromH5(filename, rotate90=True):
     '''

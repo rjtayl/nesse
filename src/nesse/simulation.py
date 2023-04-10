@@ -7,6 +7,7 @@ from .charge_propagation import *
 from tqdm import tqdm
 import csv
 from .silicon import *
+import copy
 
 #from line_profiler import LineProfiler
 
@@ -22,7 +23,7 @@ class Simulation:
     
     '''
     def __init__(self, _name, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
-                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None, _temp=None):        
+                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None, _temp=None, contacts=None):        
         self.name = _name
         self.electricField = _electricField
         self.electricPotential = _electricPotential
@@ -33,7 +34,18 @@ class Simulation:
         self.electronicResponse = _electronicResponse
         self.temp = _temp
         self.bounds = None
-        
+        self.contacts = contacts
+
+        if contacts is not None and type(_weightingPotential) is not list:
+            centers = find_centers(contacts)
+            print(centers)
+            wps = []
+            for i in range(contacts):
+                wp_temp = copy.deepcopy(_weightingPotential)
+                wp_temp.shift(centers[i]+(0,))
+                wps.append(wp_temp)
+            self.weightingPotential=wps
+            
     def __str__(self):
        return ("Nessie Simulation object \n Name: %s \n Electric Field: %s \n Weighting Potential: %s \n CCE Field: %s \n Charge Capture Field: %s \n Electronic Response: %s \n"
                 % (self.name, self.electricField,self.weightingPotential, self.cceField, self.chargeCaptureField,          
@@ -51,16 +63,24 @@ class Simulation:
         grid = self.electricPotential.grid
         gradient = np.gradient(self.electricPotential.data, grid[0],grid[1],grid[2])
         try:
-            self.electricField = Field("Electric Field", gradient[0],gradient[1],gradient[2], self.electricPotential.gri)
+            self.electricField = Field("Electric Field", gradient[0],gradient[1],gradient[2], self.electricPotential.grid)
         except:
             print("No electric potential from which to calculate weighting field.")
         return None
+    
+    def recenter_hex_contacts(self, R, s):
+        centers = find_centers(self.contacts, R, s)
+        for i in range(contacts):
+            self.weightingPotential[i].shift(centers[i]+(0,))
 
     def setWeightingField(self):
-        grid = self.weightingPotential.grid
-        gradient = np.gradient(self.weightingPotential.data, grid[0],grid[1],grid[2])
+        contacts = range(self.contacts)
+        grids = [self.weightingPotential[contact].grid for contact in contacts] 
+        gradients = [np.gradient(self.weightingPotential[contact].data, grids[contact][0],grids[contact][1],grids[contact][2]) 
+                     for contact in contacts]
         try:
-            self.weightingField = Field("Weighting Field", gradient[0],gradient[1],gradient[2], self.weightingPotential.grid)
+            self.weightingField = [Field("Weighting Field", gradients[contact][0],gradients[contact][1],gradients[contact][2],
+                                          self.weightingPotential[contact].grid) for contact in contacts]
         except:
             print("No weighting potential from which to calculate weighting field.")
         return None
@@ -146,13 +166,17 @@ class Simulation:
             #lp.print_stats()
         return events
 
-    def calculateInducedCurrent(self, events, dt):
+    def calculateInducedCurrent(self, events, dt, contacts = None):
+        if contacts is None: contacts=np.arange(self.contacts)
         for event in events:
-            event.calculateInducedCurrent(self.weightingField, dt, interp3d=True)
+            for contact in contacts:
+                event.calculateInducedCurrent(self.weightingField[contact], dt, contact, interp3d=True)
 
-    def calculateElectronicResponse(self, events):
+    def calculateElectronicResponse(self, events, contacts = None):
+        if contacts is None: contacts=np.arange(self.contacts)
         for event in events:
-            event.convolveElectronicResponse(self.electronicResponse)
+            for contact in contacts:
+                event.convolveElectronicResponse(self.electronicResponse, contact)
 
 
         '''#get induced current
@@ -167,3 +191,28 @@ class Simulation:
                 for event in events:
                     event.convolveElectronicResponse(self.electronicResponse)'''
 
+
+def find_centers(N,R=5.15e-3,s=0.1e-3):    
+    ''' This functions finds where to place the centers of hexagonal configuration depending on the hexagon radius 
+        and seperation between hexagons. Default values are correct for Nab detectors. This is here primarily to copy
+        over weighting potentials for multiple contact sims. '''
+    
+    centers = [(0,0)]
+    o_centers = [(0,0)]
+    
+    r = (np.sqrt(3)*R+s)
+    theta = np.radians(np.arange(0,360,60))
+    dx = np.round(r*np.cos(theta), 11)
+    dy = np.round(r*np.sin(theta),11)
+    
+    while len(centers) < N:
+        new_centers = []
+        for center in o_centers:
+            oldx, oldy = center
+            for i in range(len(theta)):
+                new_center = (np.round(oldx+dx[i], 8), np.round(oldy+dy[i], 8))
+                if new_center not in centers:
+                    new_centers.append(new_center)
+                    centers.append(new_center)
+        o_centers = new_centers
+    return centers[:N]

@@ -102,7 +102,8 @@ class Simulation:
         self.electronicResponse = {"times":ts, "step":step}
         return None
 
-    def simulate(self, events, eps, dt, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100):
+    def simulate(self, events, eps, dt, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, 
+                Efield=None, bounds=None):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -112,9 +113,15 @@ class Simulation:
         '''
     
         # Get electric field interpolations
-        Ex_i, Ey_i, Ez_i, Emag_i = self.electricField.interpolate(interp3d)
+        if Efield is None:
+            Ex_i, Ey_i, Ez_i, Emag_i = self.electricField.interpolate(interp3d)
+        else:
+            Ex_i, Ey_i, Ez_i, Emag_i= Efield
         
-        simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
+        if bounds is None:
+            simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
+        else: 
+            simBounds = bounds
 
         #Find electron and hole drift paths for each event
         for i in tqdm(range(len(events))):

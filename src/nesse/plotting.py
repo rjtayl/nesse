@@ -7,13 +7,13 @@ from scipy.interpolate import RegularGridInterpolator
 plt.rcParams['figure.figsize'] = [8, 5]
 plt.rcParams.update({'font.size': 18})
 
-def plot_current(event, show_plot=True, alpha=1):
-    plt.plot(event.dt,event.dI, alpha=alpha)
+def plot_current(event, show_plot=True, alpha=1, contact=0):
+    plt.plot(event.dt[contact],event.dI[contact], alpha=alpha)
     if show_plot: plt.show()
     return None
     
-def plot_signal(event, show_plot=True, alpha=1):
-    plt.plot(event.signal_times,event.signal_I, alpha=alpha)
+def plot_signal(event, show_plot=True, alpha=1, contact=0):
+    plt.plot(event.signal_times[contact],event.signal_I[contact], alpha=alpha)
     if show_plot: plt.show()
     return None
 

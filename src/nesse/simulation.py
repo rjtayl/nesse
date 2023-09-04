@@ -4,7 +4,7 @@ from .field import *
 from .quasiparticles import *
 from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import csv
 from .silicon import *
 import copy
@@ -38,7 +38,6 @@ class Simulation:
 
         if contacts is not None and type(_weightingPotential) is not list:
             centers = find_centers(contacts)
-            print(centers)
             wps = []
             for i in range(contacts):
                 wp_temp = copy.deepcopy(_weightingPotential)
@@ -70,7 +69,7 @@ class Simulation:
     
     def recenter_hex_contacts(self, R, s):
         centers = find_centers(self.contacts, R, s)
-        for i in range(contacts):
+        for i in range(centers):
             self.weightingPotential[i].shift(centers[i]+(0,))
 
     def setWeightingField(self):
@@ -103,7 +102,7 @@ class Simulation:
         return None
 
     def simulate(self, events, eps, dt, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, 
-                Efield=None, bounds=None):
+                Efield=None, bounds=None, silence=False):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -135,7 +134,7 @@ class Simulation:
             cc_h = []
 
             # Add charge cloud parts at each position where energy was deposited
-            for j in tqdm(range(len(event.pos))):
+            for j in tqdm(range(len(event.pos)), disable=silence):
                 pairNr = int(pairs[j])
                 factor = 1
                 if pairNr > maxPairs:
@@ -156,7 +155,7 @@ class Simulation:
             #lp_wrapper = lp(updateQuasiParticles)
 
             # Loop over alive particles until all have been stopped/collected
-            pbar = tqdm()
+            pbar = tqdm(disable=silence)
             while np.any(alive):
                 cc_new = updateQuasiParticles(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
                 #cc_new = lp_wrapper(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
@@ -173,11 +172,14 @@ class Simulation:
             #lp.print_stats()
         return events
 
-    def calculateInducedCurrent(self, events, dt, contacts = None):
+    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True):
         if contacts is None: contacts=np.arange(self.contacts)
-        for event in events:
-            for contact in contacts:
-                event.calculateInducedCurrent(self.weightingField[contact], dt, contact, interp3d=True)
+        for contact in contacts:
+            weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
+            wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
+        
+            for event in events:
+                event.calculateInducedCurrent(dt, wf_interp, contact)
 
     def calculateElectronicResponse(self, events, contacts = None):
         if contacts is None: contacts=np.arange(self.contacts)

@@ -130,3 +130,13 @@ dmypy.json
 
 
 *.swp
+
+# config files
+*.hf
+*.root
+
+# event files
+*.pkl
+
+# plots
+*.png

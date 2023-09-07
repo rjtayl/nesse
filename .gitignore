@@ -140,3 +140,6 @@ dmypy.json
 
 # plots
 *.png
+Nessie_Tutorial copy.ipynb
+.gitignore
+UniformPixelRisetimes.ipynb

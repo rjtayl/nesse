@@ -23,7 +23,8 @@ class Simulation:
     
     '''
     def __init__(self, _name, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
-                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None, _temp=None, contacts=None):        
+                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None, _temp=None, contacts=None,
+                      _impurityConcentration= lambda x, y, z : 1e16):        
         self.name = _name
         self.electricField = _electricField
         self.electricPotential = _electricPotential
@@ -35,6 +36,7 @@ class Simulation:
         self.temp = _temp
         self.bounds = None
         self.contacts = contacts
+        self.impurityConcentration = _impurityConcentration
 
         if contacts is not None and type(_weightingPotential) is not list:
             centers = find_centers(contacts)
@@ -52,6 +54,12 @@ class Simulation:
     
     def setTemp(self,T):
         self.temp = T
+        return None
+    
+    def setIDP(self, IDP): #IDP(x,y,z)->NI[m^-3]
+        #this function assumes you ahve the IDP as a function, 
+        #TODO: add an option to import a potential like object
+        self.impurityConcentration = IDP
         return None
         
     def setBounds(self, bounds):
@@ -157,7 +165,8 @@ class Simulation:
             # Loop over alive particles until all have been stopped/collected
             pbar = tqdm(disable=silence)
             while np.any(alive):
-                cc_new = updateQuasiParticles(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
+                cc_new = updateQuasiParticles(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp,
+                                               diffusion=diffusion, coulomb=plasma, NI=self.impurityConcentration)
                 #cc_new = lp_wrapper(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
                 counter = 0
                 for j in range(len(alive)):

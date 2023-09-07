@@ -22,7 +22,7 @@ def insideBoundaryCheck(pos, bounds):
     return ((pos[0] >= bounds[0][0]) & (pos[0] <= bounds[0][1]) & (pos[1] >= bounds[1][0]) & (pos[1] <= bounds[1][1])
             & (pos[2] >= bounds[2][0]) & (pos[2] <= bounds[2][1]))
 
-def updateQuasiParticles(objects, eps, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffusion=True, coulomb=False, tauTrap = lambda x, y, z : 1e9, NI = lambda x, y, z : 1e10):
+def updateQuasiParticles(objects, eps, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffusion=True, coulomb=False, tauTrap = lambda x, y, z : 1e9, NI = lambda x, y, z : 1e16):
     #Vector to save the effective electric field for each particle at the time step
     Eeff = np.zeros((len(objects), 3))
 

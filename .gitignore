@@ -140,6 +140,10 @@ dmypy.json
 
 # plots
 *.png
+
+#RJ analysis
 Nessie_Tutorial copy.ipynb
-.gitignore
 UniformPixelRisetimes.ipynb
+AveragePixelRT.py
+UniformPixelRisetimes_analysis.ipynb
+depletion.ipynb

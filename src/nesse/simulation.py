@@ -146,8 +146,10 @@ class Simulation:
         #Find electron and hole drift paths for each event
         for i in tqdm(range(len(events))):
             event = events[i]
-            #rint will give an integer number of e-h pairs, but will need to use Fano factor for a proper calculation
-            pairs = np.rint(event.dE/ephBestFit(self.temp))
+            #rint will give an integer number of e-h pairs, then adjust for variance using sigma = sqrt(FN)
+            # assumes in linear regeme of fano factor
+            pairs_0 = event.dE/ephBestFit(self.temp)
+            pairs = np.rint(np.random.normal(pairs_0,np.sqrt(Fano_Si*pairs_0))) 
 
             # electron charge cloud assembly
             cc_e = []

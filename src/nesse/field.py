@@ -176,3 +176,18 @@ def analytical_potential(name, P, bounds,dx,dy,dz):
     X,Y,Z = np.meshgrid(x,y,z,indexing='xy')
     data = P(X,Y,Z)
     return Potential(name, data, grid)
+
+def analytical_field(name, fields, bounds,dx,dy,dz):
+    '''
+    Create a potential using an analytical function of the form lambda x,y,x: f(x,y,z).
+    You can then convert this to a field in the normal way to get analytical fields. 
+    '''
+    x = np.arange(bounds[0][0],bounds[0][1],dx)
+    y = np.arange(bounds[1][0],bounds[1][1],dy)
+    z = np.arange(bounds[2][0],bounds[2][1],dz)
+    grid = [x, y, z]
+    X,Y,Z = np.meshgrid(x,y,z,indexing='xy')
+    Ex = fields[0](X,Y,Z)
+    Ey = fields[1](X,Y,Z)
+    Ez = fields[2](X,Y,Z)
+    return Field(name, Ex, Ey, Ez, grid)

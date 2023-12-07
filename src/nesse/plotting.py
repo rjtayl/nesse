@@ -122,6 +122,7 @@ def plot_potential(potential, mesh_size = (500,500), x_plane = True,
         coords = np.stack((X,Y,Z),axis=-1)
         potentialGrid = potential_interp(coords)
         plt.contourf(X,Z,potentialGrid,mesh_size[0])
+        plt.colorbar()
     
     if show_plot: plt.show()
     

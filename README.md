@@ -7,10 +7,10 @@ Please insure the following dependencies are installed if installing nesse manua
 
 - Cython==0.29.32
 - uproot==4.3.7
-- numpy
+- numpy==1.24.3
 - scipy
 - tqdm
-- matplotlib"
+- matplotlib
 - numba
 - h5py
 - pandas

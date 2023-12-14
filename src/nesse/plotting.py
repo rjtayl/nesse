@@ -7,13 +7,13 @@ from scipy.interpolate import RegularGridInterpolator
 plt.rcParams['figure.figsize'] = [8, 5]
 plt.rcParams.update({'font.size': 18})
 
-def plot_current(event, show_plot=True, alpha=1):
-    plt.plot(event.dt,event.dI, alpha=alpha)
+def plot_current(event, show_plot=True, alpha=1, contact=0):
+    plt.plot(event.dt[contact],event.dI[contact], alpha=alpha)
     if show_plot: plt.show()
     return None
     
-def plot_signal(event, show_plot=True, alpha=1):
-    plt.plot(event.signal_times,event.signal_I, alpha=alpha)
+def plot_signal(event, show_plot=True, alpha=1, contact=0):
+    plt.plot(event.signal_times[contact],event.signal_I[contact], alpha=alpha)
     if show_plot: plt.show()
     return None
 
@@ -122,9 +122,31 @@ def plot_potential(potential, mesh_size = (500,500), x_plane = True,
         coords = np.stack((X,Y,Z),axis=-1)
         potentialGrid = potential_interp(coords)
         plt.contourf(X,Z,potentialGrid,mesh_size[0])
+        plt.colorbar()
     
     if show_plot: plt.show()
     
     plt.savefig(prefix+"potential" +suffix + ".png")
+    
+    return None
+
+
+def plot_field_1D(field,x=0,y=0, prefix="",suffix="", show_plot=True, bounds=None):
+                        
+    fieldx_interp, fieldy_interp, fieldz_interp, fieldMag_interp = field.interpolate(True)
+    
+    if bounds is None:
+        bounds = [[axis[0],axis[-1]] for axis in field.grid]
+    
+    zs = np.linspace(bounds[2][0],bounds[2][1],100)
+    Ezs = [fieldz_interp([x,y,z]) for z in zs]
+
+    plt.plot(zs,Ezs)
+    plt.xlabel("z")
+    plt.ylabel("Ez")
+    
+    if show_plot: plt.show()
+    
+    plt.savefig(prefix+"field" +suffix + ".png")
     
     return None

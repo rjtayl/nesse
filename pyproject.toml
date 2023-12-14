@@ -20,14 +20,14 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Physics"
 ]
 dependencies = [
-    "numpy",
+    "numpy==1.24.3",
     "scipy",
     "tqdm",
-    "cython",
+    "Cython==0.29.32",
     "matplotlib",
     "numba",
     "h5py",
-    "uproot",
+    "uproot==4.3.7",
     "pandas"
 ]
 

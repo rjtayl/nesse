@@ -4,9 +4,10 @@ from .field import *
 from .quasiparticles import *
 from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
-from tqdm import tqdm
+from tqdm.auto import tqdm
 import csv
 from .silicon import *
+import copy
 
 #from line_profiler import LineProfiler
 
@@ -21,8 +22,9 @@ class Simulation:
     Currently assumes only one contact.
     
     '''
-    def __init__(self, _name, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
-                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None, _temp=None):        
+    def __init__(self, _name, _temp, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
+                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None, contacts=1,
+                      _impurityConcentration= lambda x, y, z : 1e16):        
         self.name = _name
         self.electricField = _electricField
         self.electricPotential = _electricPotential
@@ -33,7 +35,21 @@ class Simulation:
         self.electronicResponse = _electronicResponse
         self.temp = _temp
         self.bounds = None
-        
+        self.contacts = contacts
+        self.impurityConcentration = _impurityConcentration
+
+        if contacts is not None and type(_weightingPotential) is not list:
+            centers = find_centers(contacts)
+            wps = []
+            for i in range(contacts):
+                wp_temp = copy.deepcopy(_weightingPotential)
+                wp_temp.shift(centers[i]+(0,))
+                wps.append(wp_temp)
+            self.weightingPotential=wps
+
+        if _electricField is None and _electricPotential is not None:
+            self.electricField = _electricPotential.toField()
+            
     def __str__(self):
        return ("Nessie Simulation object \n Name: %s \n Electric Field: %s \n Weighting Potential: %s \n CCE Field: %s \n Charge Capture Field: %s \n Electronic Response: %s \n"
                 % (self.name, self.electricField,self.weightingPotential, self.cceField, self.chargeCaptureField,          
@@ -41,6 +57,14 @@ class Simulation:
     
     def setTemp(self,T):
         self.temp = T
+        return None
+    
+    def setIDP(self, IDP): #IDP(x,y,z)->NI[m^-3]
+        if type(IDP) is Potential:
+            self.impurityConcentration = IDP.interpolate()
+
+        else:
+            self.impurityConcentration = IDP
         return None
         
     def setBounds(self, bounds):
@@ -51,16 +75,20 @@ class Simulation:
         grid = self.electricPotential.grid
         gradient = np.gradient(self.electricPotential.data, grid[0],grid[1],grid[2])
         try:
-            self.electricField = Field("Electric Field", gradient[0],gradient[1],gradient[2], self.electricPotential.gri)
+            self.electricField = Field("Electric Field", gradient[0],gradient[1],gradient[2], self.electricPotential.grid)
         except:
             print("No electric potential from which to calculate weighting field.")
         return None
-
+    
+    def recenter_hex_contacts(self, R, s):
+        centers = find_centers(self.contacts, R, s)
+        for i in range(centers):
+            self.weightingPotential[i].shift(centers[i]+(0,))
+    
     def setWeightingField(self):
-        grid = self.weightingPotential.grid
-        gradient = np.gradient(self.weightingPotential.data, grid[0],grid[1],grid[2])
+        contacts = range(self.contacts)
         try:
-            self.weightingField = Field("Weighting Field", gradient[0],gradient[1],gradient[2], self.weightingPotential.grid)
+            self.weightingField = [self.weightingPotential[contact].toField() for contact in contacts]
         except:
             print("No weighting potential from which to calculate weighting field.")
         return None
@@ -71,18 +99,31 @@ class Simulation:
     def setChargeCaptureField(self):
         return None
 
-    def setElectronicResponse(self, spiceFile):
-        ts = []
-        step = []
-        with open(spiceFile,'r') as csvfile:
-            plots = csv.reader(csvfile, delimiter=',')
-            for row in plots:
-                ts.append(float(row[0])*1e-9) #convert from ns to s
-                step.append(float(row[1]))
-        self.electronicResponse = {"times":ts, "step":step}
+    def setElectronicResponse(self, spiceFile=None, t1=None,t2=None, length=7000):
+        '''
+        This either takes spice output csv file or assumes a RC-CR signal shaping and the user has to specify each time constant
+        approximate values for Nab are 5 us and 7 ns
+        '''
+        if spiceFile is not None:
+            ts = []
+            step = []
+            with open(spiceFile,'r') as csvfile:
+                plots = csv.reader(csvfile, delimiter=',')
+                for row in plots:
+                    ts.append(float(row[0])*1e-9) #convert from ns to s
+                    step.append(float(row[1]))
+            self.electronicResponse = {"times":ts, "step":step}
+        
+        elif t1 is not None and t2 is not None:
+            ts = np.arange(length)*1e-9
+            step = 1/(t1-t2) * (np.exp(-ts/t1)-np.exp(-ts/t2))
+            step = (np.exp(-ts/t1)-np.exp(-ts/t2))
+            self.electronicResponse = {"times":ts, "step":step}
+
         return None
 
-    def simulate(self, events, eps, dt, plasma=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100):
+    def simulate(self, events, ds, dt, coulomb=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, 
+                Efield=None, bounds=None, silence=False):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -92,15 +133,23 @@ class Simulation:
         '''
     
         # Get electric field interpolations
-        Ex_i, Ey_i, Ez_i, Emag_i = self.electricField.interpolate(interp3d)
+        if Efield is None:
+            Ex_i, Ey_i, Ez_i, Emag_i = self.electricField.interpolate(interp3d)
+        else:
+            Ex_i, Ey_i, Ez_i, Emag_i= Efield
         
-        simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
+        if bounds is None:
+            simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
+        else: 
+            simBounds = bounds
 
         #Find electron and hole drift paths for each event
         for i in tqdm(range(len(events))):
             event = events[i]
-            #rint will give an integer number of e-h pairs, but will need to use Fano factor for a proper calculation
-            pairs = np.rint(event.dE/ephBestFit(self.temp))
+            #rint will give an integer number of e-h pairs, then adjust for variance using sigma = sqrt(FN)
+            # assumes in linear regeme of fano factor
+            pairs_0 = event.dE/ephBestFit(self.temp)
+            pairs = np.rint(np.random.normal(pairs_0,np.sqrt(Fano_Si*pairs_0))) 
 
             # electron charge cloud assembly
             cc_e = []
@@ -108,7 +157,7 @@ class Simulation:
             cc_h = []
 
             # Add charge cloud parts at each position where energy was deposited
-            for j in tqdm(range(len(event.pos))):
+            for j in tqdm(range(len(event.pos)), disable=silence):
                 pairNr = int(pairs[j])
                 factor = 1
                 if pairNr > maxPairs:
@@ -124,15 +173,12 @@ class Simulation:
             alive = np.ones(len(cc)) == 1
             print("Total quasiparticles: %d" % len(cc))
 
-            #lp = LineProfiler()
-            #lp.add_function(generalized_mobility_el)
-            #lp_wrapper = lp(updateQuasiParticles)
-
             # Loop over alive particles until all have been stopped/collected
-            pbar = tqdm()
+            pbar = tqdm(disable=silence)
             while np.any(alive):
-                cc_new = updateQuasiParticles(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
-                #cc_new = lp_wrapper(list(compress(cc, alive)), eps, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp, diffusion=diffusion, coulomb=plasma)
+                cc_new = updateQuasiParticles(list(compress(cc, alive)), ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp,
+                                               diffusion=diffusion, coulomb=coulomb, NI=self.impurityConcentration)
+                
                 counter = 0
                 for j in range(len(alive)):
                     if alive[j]:
@@ -143,27 +189,47 @@ class Simulation:
                 pbar.update(1)
 
             event.quasiparticles = cc
-            #lp.print_stats()
+
         return events
 
-    def calculateInducedCurrent(self, events, dt):
-        for event in events:
-            event.calculateInducedCurrent(self.weightingField, dt, interp3d=True)
-
-    def calculateElectronicResponse(self, events):
-        for event in events:
-            event.convolveElectronicResponse(self.electronicResponse)
-
-
-        '''#get induced current
-        print("calculating induced current")
-        
+    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True):
+        if contacts is None: contacts=np.arange(self.contacts)
         if self.weightingField is None: self.setWeightingField()
+        for contact in contacts:
+            weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
+            wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
         
-        for event in events:
-            event.calculateInducedCurrent(self.weightingField, 0.1e-9, interp3d=interp3d)
-            
-        if self.electronicResponse is not None:
-                for event in events:
-                    event.convolveElectronicResponse(self.electronicResponse)'''
+            for event in events:
+                event.calculateInducedCurrent(dt, wf_interp, contact)
 
+    def calculateElectronicResponse(self, events, contacts = None):
+        if contacts is None: contacts=np.arange(self.contacts)
+        for event in events:
+            for contact in contacts:
+                event.convolveElectronicResponse(self.electronicResponse, contact)
+
+
+def find_centers(N,R=5.15e-3,s=0.1e-3):    
+    ''' This functions finds where to place the centers of hexagonal configuration depending on the hexagon radius 
+        and seperation between hexagons. Default values are correct for Nab detectors. This is here primarily to copy
+        over weighting potentials for multiple contact sims. '''
+    
+    centers = [(0,0)]
+    o_centers = [(0,0)]
+    
+    r = (np.sqrt(3)*R+s)
+    theta = np.radians(np.arange(0,360,60))
+    dx = np.round(r*np.cos(theta), 11)
+    dy = np.round(r*np.sin(theta),11)
+    
+    while len(centers) < N:
+        new_centers = []
+        for center in o_centers:
+            oldx, oldy = center
+            for i in range(len(theta)):
+                new_center = (np.round(oldx+dx[i], 8), np.round(oldy+dy[i], 8))
+                if new_center not in centers:
+                    new_centers.append(new_center)
+                    centers.append(new_center)
+        o_centers = new_centers
+    return centers[:N]

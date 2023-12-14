@@ -24,26 +24,26 @@ class Event:
         self.times = _times
 
         self.dQ = []
-        self.dI = []
-        self.dt = []
+        self.dI = {}
+        self.dt = {}
 
         self.quasiparticles = []
         
-        self.signal_I = None
-        self.signal_times = None
+        self.signal_I = {}
+        self.signal_times = {}
 
     def shift_pos(self,new_pos=[0,0,0]):
         shift = np.array(new_pos) - self.pos[0]
         self.pos = self.pos + shift
         return None
         
-    def convolveElectronicResponse(self, electronicResponse):
-        func_I = interp1d(self.dt, self.dI, bounds_error=False, fill_value=0)
+    def convolveElectronicResponse(self, electronicResponse, contact=0):
+        func_I = interp1d(self.dt[contact], self.dI[contact], bounds_error=False, fill_value=0)
         temp_times = electronicResponse["times"]
         dt = np.diff(temp_times)[0]
         
-        self.signal_I = np.convolve(func_I(temp_times),electronicResponse["step"])
-        self.signal_times = np.arange(0,len(self.signal_I)*dt, dt)
+        self.signal_I[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])
+        self.signal_times[contact] = np.arange(0,len(self.signal_I[contact])*dt, dt)
         
         return None
         
@@ -58,8 +58,8 @@ class Event:
         self.times *= timeConversionFactor
         return None
         
-    def calculateInducedCurrent(self, weightingField, dt, interp3d=True):
-        weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d=interp3d)
+    def calculateInducedCurrent(self, dt, WF_interp, contact=0):
+        weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
         
         max_time = max([o.time[-1] for o in self.quasiparticles])
         start_time = min([o.time[0] for o in self.quasiparticles])
@@ -115,18 +115,18 @@ class Event:
                 func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
                 induced_I += func_I(times_I)'''
         
-        self.dI = induced_I
-        self.dt = times_I-start_time
+        self.dI[contact] = induced_I
+        self.dt[contact]=times_I-start_time
         
         return None    
     
-    def sample(self, dt,length=None):
+    def sample(self, dt,length=None, contact=0):
         '''
         Samples the induced current of an event to larger timesteps so that it is the same format as nab data. 
         There is some question as to the proper way to do this; for now we simply take the value at the exact time sampled.
         '''
-        step = int(dt/(self.signal_times[1]-self.signal_times[0])) 
-        signal = self.signal_I[::step].copy()
+        step = int(dt/(self.signal_times[contact][1]-self.signal_times[contact][0])) 
+        signal = self.signal_I[contact][::step].copy()
         if length==None:
             return signal
         else:
@@ -159,8 +159,8 @@ def eventsFromG4root(filename, pixel=None):
     return events
     
 #convert events to nabPy form, and save optionally save pickle file if filename is given. dt is time sampling in ns, which is 4ns for current nab daq
-def saveEventsNabPy(events, filename=None, dt=4e-9, length=7000):
-    new_events =np.array([event.sample(dt,length) for event in events])
+def saveEventsNabPy(events, filename=None, dt=4e-9, length=7000, contact=0):
+    new_events =np.array([event.sample(dt,length, contact) for event in events])
     if filename is not None:
         with open(filename+".pkl", "wb") as file:
             pickle.dump(new_events, file)

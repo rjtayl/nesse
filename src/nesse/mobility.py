@@ -48,8 +48,8 @@ def mobility(mu, E, beta, vs):
 # Impurity density dependent mobility parametrization according to Klaassen
 mu_max = mu0_el(300)
 mu_min = 0.00685 # m^2/V/s
-Nref1 = 9.2e10 # m^-3
-Nref2 = 3.41e14 # m^-3
+Nref1 = 9.2e22 # m^-3
+Nref2 = 3.41e26 # m^-3
 alpha1 = 0.711
 
 @jit(nopython=True, fastmath=True)

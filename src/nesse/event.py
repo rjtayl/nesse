@@ -132,7 +132,7 @@ class Event:
         else:
             return np.pad(signal, (round(length/2),round(length/2)-len(signal)),"edge")
 
-def eventsFromG4root(filename, pixel=None):
+def eventsFromG4root(filename, pixel=None, N=None):
     import uproot
     import pandas
 
@@ -141,7 +141,7 @@ def eventsFromG4root(filename, pixel=None):
 
     try:
         df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber"], 
-                         library="pd")
+                        library="pd")
         if pixel is not None:
             df = df[df["pixelNumber"]==pixel]
     
@@ -152,10 +152,14 @@ def eventsFromG4root(filename, pixel=None):
         gdf = df.groupby("iD")
 
     events = []
+    i=0
     for eID, group in gdf:
+        if N is not None and i > N:
+            break
         event = Event(eID, group[["x", "y", "z"]].to_numpy(), group["eDep"].to_numpy(), group["time"].to_numpy())
         event.convertUnits(1e3,1e-3,1e-9)
         events.append(event)
+        i+=1
     return events
     
 #convert events to nabPy form, and save optionally save pickle file if filename is given. dt is time sampling in ns, which is 4ns for current nab daq

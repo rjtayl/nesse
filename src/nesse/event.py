@@ -1,6 +1,7 @@
 import numpy as np
 from .constants import *
 from scipy.interpolate import interp1d
+from scipy.integrate import cumulative_trapezoid
 from tqdm import tqdm
 import pickle
 
@@ -23,13 +24,13 @@ class Event:
         self.dE = _dE
         self.times = _times
 
-        self.dQ = []
+        self.dQ = {}
         self.dI = {}
         self.dt = {}
 
         self.quasiparticles = []
         
-        self.signal_I = {}
+        self.signal = {}
         self.signal_times = {}
 
     def shift_pos(self,new_pos=[0,0,0]):
@@ -42,15 +43,15 @@ class Event:
         temp_times = electronicResponse["times"]
         dt = np.diff(temp_times)[0]
         
-        self.signal_I[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])
-        self.signal_times[contact] = np.arange(0,len(self.signal_I[contact])*dt, dt)
+        self.signal[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])
+        self.signal_times[contact] = np.arange(0,len(self.signal[contact])*dt, dt)
         
         return None
         
     def addGaussianNoise(self, sigma=1, SNR=None):
         if SNR is not None:
-            sigma = np.max(np.abs(self.signal_I))/SNR
-        self.signal_I += np.random.normal(0, sigma , len(self.signal_I))   
+            sigma = np.max(np.abs(self.signal))/SNR
+        self.signal += np.random.normal(0, sigma , len(self.signal))   
         
     def convertUnits(self, energyConversionFactor, lengthConversionFactor, timeConversionFactor):
         self.dE *= energyConversionFactor
@@ -77,56 +78,27 @@ class Event:
             if len(Is) > 0:
                 func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
                 induced_I += func_I(times_I)
-
-        '''for i in tqdm(range(len(self.vel_drift_e))):
-            if interp3d:
-                Is = [-qe_SI*np.dot(self.vel_drift_e[i][j], 
-                        [weightingFieldx_interp(self.pos_drift_e[i][j]),
-                         weightingFieldy_interp(self.pos_drift_e[i][j]),
-                         weightingFieldz_interp(self.pos_drift_e[i][j])]) for j in range(len(self.vel_drift_e[i]))]
-                         
-            else:
-                Is = [-qe_SI*np.dot(self.vel_drift_e[i][j], 
-                        [weightingFieldx_interp(self.pos_drift_e[i][j]),
-                         weightingFieldy_interp(self.pos_drift_e[i][j]),
-                         weightingFieldz_interp(self.pos_drift_e[i][j])])[0] for j in range(len(self.vel_drift_e[i]))]
-
-            times = self.times_drift_e[i][:-1]
-
-            if len(Is)>1:
-                func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
-                
-        for i in tqdm(range(len(self.vel_drift_h))):
-            if interp3d:
-                Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
-                        [weightingFieldx_interp(self.pos_drift_h[i][j]),
-                         weightingFieldy_interp(self.pos_drift_h[i][j]),
-                         weightingFieldz_interp(self.pos_drift_h[i][j])]) for j in range(len(self.vel_drift_h[i]))]
-                         
-            else:
-                Is = [qe_SI*np.dot(self.vel_drift_h[i][j], 
-                        [weightingFieldx_interp(self.pos_drift_h[i][j]),
-                         weightingFieldy_interp(self.pos_drift_h[i][j]),
-                         weightingFieldz_interp(self.pos_drift_h[i][j])])[0] for j in range(len(self.vel_drift_h[i]))]
-            times = self.times_drift_h[i][:-1]
-
-            if len(Is)>1:
-                func_I = interp1d(times, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)'''
         
         self.dI[contact] = induced_I
         self.dt[contact]=times_I-start_time
         
         return None    
     
+    def calculateIntegratedCharge(self, contact=0):
+        try:
+            self.dQ[contact] = cumulative_trapezoid(self.dI[contact], self.dt[contact], initial=0)
+        except: 
+            if not self.dI:
+                print("No induced current to calculate charge from.")
+        return None
+    
     def sample(self, dt,length=None, contact=0):
         '''
-        Samples the induced current of an event to larger timesteps so that it is the same format as nab data. 
+        Samples the signal of an event to larger timesteps so that it is the same format as nab data. 
         There is some question as to the proper way to do this; for now we simply take the value at the exact time sampled.
         '''
         step = int(dt/(self.signal_times[contact][1]-self.signal_times[contact][0])) 
-        signal = self.signal_I[contact][::step].copy()
+        signal = self.signal[contact][::step].copy()
         if length==None:
             return signal
         else:

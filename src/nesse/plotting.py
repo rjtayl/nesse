@@ -11,9 +11,14 @@ def plot_current(event, show_plot=True, alpha=1, contact=0):
     plt.plot(event.dt[contact],event.dI[contact], alpha=alpha)
     if show_plot: plt.show()
     return None
+
+def plot_charge(event, show_plot=True, alpha=1, contact=0):
+    plt.plot(event.dt[contact],event.dQ[contact], alpha=alpha)
+    if show_plot: plt.show()
+    return None
     
 def plot_signal(event, show_plot=True, alpha=1, contact=0):
-    plt.plot(event.signal_times[contact],event.signal_I[contact], alpha=alpha)
+    plt.plot(event.signal_times[contact],event.signal[contact], alpha=alpha)
     if show_plot: plt.show()
     return None
 

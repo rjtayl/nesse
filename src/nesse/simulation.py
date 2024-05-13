@@ -8,6 +8,7 @@ from tqdm.auto import tqdm
 import csv
 from .silicon import *
 import copy
+from .mobility import *
 
 #from line_profiler import LineProfiler
 
@@ -22,9 +23,9 @@ class Simulation:
     Currently assumes only one contact.
     
     '''
-    def __init__(self, _name, _temp, _electricField=None, _weightingPotential=None, _electricPotential=None, _weightingField=None,  
-                    _cceField=None, _chargeCaptureField=None, _electronicResponse=None, contacts=1,
-                      _impurityConcentration= lambda x, y, z : 1e16):        
+    def __init__(self, _name, _temp, _electricField=None, _weightingPotential=None, _electricPotential=None,
+                 _weightingField=None, _cceField=None, _chargeCaptureField=None, _electronicResponse=None, contacts=1,
+                 _impurityConcentration= lambda x, y, z : 1e16, _mobility = [generalized_mobility_el, generalized_mobility_h]):        
         self.name = _name
         self.electricField = _electricField
         self.electricPotential = _electricPotential
@@ -37,6 +38,7 @@ class Simulation:
         self.bounds = None
         self.contacts = contacts
         self.impurityConcentration = _impurityConcentration
+        self.mobility = _mobility
 
         if contacts is not None and type(_weightingPotential) is not list:
             centers = find_centers(contacts)
@@ -57,6 +59,10 @@ class Simulation:
     
     def setTemp(self,T):
         self.temp = T
+        return None
+    
+    def setMobility(self,mobility_e, mobility_h):
+        self.mobility = [mobility_e, mobility_h]
         return None
     
     def setIDP(self, IDP): #IDP(x,y,z)->NI[m^-3]
@@ -176,8 +182,9 @@ class Simulation:
             # Loop over alive particles until all have been stopped/collected
             pbar = tqdm(disable=silence)
             while np.any(alive):
-                cc_new = updateQuasiParticles(list(compress(cc, alive)), ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, self.temp,
-                                               diffusion=diffusion, coulomb=coulomb, NI=self.impurityConcentration)
+                cc_new = updateQuasiParticles(list(compress(cc, alive)), ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                                              self.temp, diffusion=diffusion, coulomb=coulomb,NI=self.impurityConcentration,
+                                              mobility_e = self.mobility[0], mobility_h = self.mobility[1])
                 
                 counter = 0
                 for j in range(len(alive)):
@@ -202,12 +209,21 @@ class Simulation:
             for event in events:
                 event.calculateInducedCurrent(dt, wf_interp, contact)
 
+    def calculateInducedCharge(self, events, contacts = None):
+        if contacts is None: contacts=np.arange(self.contacts)
+        for contact in contacts:
+            for event in events:
+                event.calculateIntegratedCharge(contact)
+
     def calculateElectronicResponse(self, events, contacts = None):
         if contacts is None: contacts=np.arange(self.contacts)
         for event in events:
             for contact in contacts:
                 event.convolveElectronicResponse(self.electronicResponse, contact)
 
+    def getSignals(self, events, dt, contacts = None, interp3d=True):
+        self.calculateInducedCurrent(events, dt, contacts, interp3d)
+        self.calculateElectronicResponse(events, contacts)
 
 def find_centers(N,R=5.15e-3,s=0.1e-3):    
     ''' This functions finds where to place the centers of hexagonal configuration depending on the hexagon radius 

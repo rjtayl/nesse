@@ -24,7 +24,7 @@ def insideBoundaryCheck(pos, bounds):
 
 def updateQuasiParticles(objects, ds, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffusion=True, coulomb=False,
                          tauTrap = lambda x, y, z : 1e9, NI = lambda x, y, z : 1e16,
-                         mobility_e = generalized_mobility_el, mobility_h = generalized_mobility_h):
+                         mobility_e = canali_mobility_e, mobility_h = canali_mobility_h):
     #Vector to save the effective electric field for each particle at the time step
     Eeff = np.zeros((len(objects), 3))
 

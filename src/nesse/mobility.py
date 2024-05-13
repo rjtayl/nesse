@@ -102,27 +102,27 @@ def canali_mobility_e(T, NI, E):
     mu = mu_0_e * (300/T)**theta_mu_e
     v_s = v_s_e * (300/T)**theta_v_s_e
     c = c_e * (300/T)**theta_c_e
-    return mu/(1+(mu*E/v_s)**1/c)
+    return mu/(1+(mu*E/v_s)**c)**(1/c)
 
 def canali_mobility_h(T, NI, E):
     mu = mu_0_h * (300/T)**theta_mu_h
     v_s = v_s_h * (300/T)**theta_v_s_h
     c = c_h * (300/T)**theta_c_h
-    return mu/(1+(mu*E/v_s)**1/c)
+    return mu/(1+(mu*E/v_s)**c)**(1/c)
 
 #RJ fit to electrons
 @jit(nopython=True)
-def mu0_el(T):
+def mu0_el_RJ(T):
     return 0.1521 * (T/300)**-2.01 # m^2/V/s
 
 #RJ max fit  to electrons
 @jit(nopython=True)
-def mu0_el(T):
+def mu0_el_RJ_max(T):
     return 0.1721 * (T/300)**-2.01 # m^2/V/s
 
 @jit(nopython=True)
-def generalized_mobility_el(T, NI, E):
-    mu = 1/(1/mu0_el(T)+1/mu_I(T, NI))
+def generalized_mobility_el_RJ(T, NI, E):
+    mu = 1/(1/mu0_el_RJ(T)+1/mu_I(T, NI))
     vsat = vs_el(T)
     return mu/(1+(mu*E/vsat)**(beta_el))**1/beta_el
 

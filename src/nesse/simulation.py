@@ -150,7 +150,8 @@ class Simulation:
             simBounds = bounds
 
         #Find electron and hole drift paths for each event
-        for i in tqdm(range(len(events))):
+        for i in (t:=tqdm(range(len(events)))):
+            t.set_description(f"Drift Calculation", refresh=True)
             event = events[i]
             #rint will give an integer number of e-h pairs, then adjust for variance using sigma = sqrt(FN)
             # assumes in linear regeme of fano factor
@@ -177,7 +178,9 @@ class Simulation:
             cc = cc_e + cc_h
 
             alive = np.ones(len(cc)) == 1
-            print("Total quasiparticles: %d" % len(cc))
+            # print("Total quasiparticles: %d" % len(cc))
+            # t.set_description(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
+            t.set_postfix_str(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
 
             # Loop over alive particles until all have been stopped/collected
             pbar = tqdm(disable=silence)

@@ -84,6 +84,34 @@ class Event:
         
         return None    
     
+    def calculateInducedCurrent_eh(self, dt, WF_interp, electron = True):
+        weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
+        
+        max_time = max([o.time[-1] for o in self.quasiparticles])
+        start_time = min([o.time[0] for o in self.quasiparticles])
+        times_I = np.arange(start_time,max_time,dt)
+        
+        induced_I = np.zeros(len(times_I))
+
+        ehs = [o for o in self.quasiparticles if o.q<0] if electron else [o for o in self.quasiparticles if o.q>0]
+
+        for i in range(len(ehs)):
+            o = ehs[i]
+
+            Is = [o.q*np.dot(o.vel[j],
+                        [weightingFieldx_interp(o.pos[j]),
+                         weightingFieldy_interp(o.pos[j]),
+                         weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+
+            if len(Is) > 0:
+                func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                induced_I += func_I(times_I)
+        
+        dI = induced_I
+        dT =times_I-start_time
+        
+        return dI, dT   
+    
     def calculateIntegratedCharge(self, contact=0):
         try:
             self.dQ[contact] = cumulative_trapezoid(self.dI[contact], self.dt[contact], initial=0)

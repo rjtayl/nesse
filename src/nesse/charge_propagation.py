@@ -66,12 +66,12 @@ def updateQuasiParticles(objects, ds, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp
             #currently only interpolates on z
             objects[i].addVel(dv)
             if pos[2] > bounds[2][1]:
-                print("out of bounds, crossed top contact")
+                # print("out of bounds, crossed top contact")
                 dt = (bounds[2][1] - objects[i].pos[-1][2])/objects[i].vel[-1][2]
                 objects[i].addTime(objects[i].time[-1]+dt)
                 objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
             elif pos[2] < bounds[2][0]:
-                print("out of bounds, crossed bottom contact")
+                # print("out of bounds, crossed bottom contact")
                 dt = (bounds[2][0] - objects[i].pos[-1][2])/objects[i].vel[-1][2]
                 objects[i].addTime(objects[i].time[-1]+dt)
                 objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)

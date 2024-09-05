@@ -9,6 +9,7 @@ import csv
 from .silicon import *
 import copy
 from .mobility import *
+import os
 
 #from line_profiler import LineProfiler
 
@@ -39,6 +40,7 @@ class Simulation:
         self.contacts = contacts
         self.impurityConcentration = _impurityConcentration
         self.mobility = _mobility
+        self.threads = os.cpu_count()
 
         if contacts is not None and type(_weightingPotential) is not list:
             centers = find_centers(contacts)
@@ -98,6 +100,10 @@ class Simulation:
         except:
             print("No weighting potential from which to calculate weighting field.")
         return None
+    
+    def setThreadNumber(self, N):
+        self.threads=N
+        return None
 
     def setChargeCollectionEfficiencyField(self):
         return None
@@ -129,7 +135,7 @@ class Simulation:
         return None
 
     def simulate(self, events, ds, dt, coulomb=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, 
-                Efield=None, bounds=None, silence=False):
+                Efield=None, bounds=None, silence=False, parallel=False):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -202,21 +208,42 @@ class Simulation:
 
         return events
 
-    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True):
+    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True, parallel=False):
         if contacts is None: contacts=np.arange(self.contacts)
-        if self.weightingField is None: self.setWeightingField()
-        for contact in contacts:
-            weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
-            wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
-        
-            for event in events:
-                event.calculateInducedCurrent(dt, wf_interp, contact)
+        # if self.weightingField is None: self.setWeightingField()
 
-    def calculateInducedCharge(self, events, contacts = None):
-        if contacts is None: contacts=np.arange(self.contacts)
-        for contact in contacts:
-            for event in events:
-                event.calculateIntegratedCharge(contact)
+        if parallel == False:
+            for contact in contacts:
+                weightingField = self.weightingPotential[contact].toField()
+                # weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
+                
+                weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
+                wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
+                
+                del weightingField
+            
+                for event in events:
+                    event.calculateInducedCurrent(dt, wf_interp, contact)
+
+        elif parallel==True:
+            import multiprocessing as mp
+            mp.set_start_method('spawn')
+            
+            for contact in contacts:
+                weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
+                wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
+
+                with mp.Pool(processes=self.threads) as pool:
+                    pool.map(lambda event: event.calc)
+
+    # okay this is going to be more complicated than I hoped. We need to make it so every process can see the 
+    # interpolation without creating a bunch of copies. Gonna come back to this after I fix the other memory issues
+
+    # def calculateInducedCharge(self, events, contacts = None):
+    #     if contacts is None: contacts=np.arange(self.contacts)
+    #     for contact in contacts:
+    #         for event in events:
+    #             event.calculateInducedCurrent(dt, wf_interp, contact)
 
     def calculateElectronicResponse(self, events, contacts = None):
         if contacts is None: contacts=np.arange(self.contacts)
@@ -224,8 +251,8 @@ class Simulation:
             for contact in contacts:
                 event.convolveElectronicResponse(self.electronicResponse, contact)
 
-    def getSignals(self, events, dt, contacts = None, interp3d=True):
-        self.calculateInducedCurrent(events, dt, contacts, interp3d)
+    def getSignals(self, events, dt, contacts = None, interp3d=True, parallel=False):
+        self.calculateInducedCurrent(events, dt, contacts, interp3d, parallel=parallel)
         self.calculateElectronicResponse(events, contacts)
 
 def find_centers(N,R=5.15e-3,s=0.1e-3):    

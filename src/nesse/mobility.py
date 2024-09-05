@@ -110,6 +110,20 @@ def canali_mobility_h(T, NI, E):
     c = c_h * (300/T)**theta_c_h
     return mu/(1+(mu*E/v_s)**c)**(1/c)
 
+
+mu_0_e_nab = (1635*1e-4) * (1 - 0.07)
+def Nab_canali_mobility_e(T, NI, E):
+    mu = mu_0_e_nab * (300/T)**theta_mu_e
+    v_s = v_s_e * (300/T)**theta_v_s_e
+    c = c_e * (300/T)**theta_c_e
+    return mu/(1+(mu*E/v_s)**c)**(1/c)
+
+def Nab_canali_mobility_h(T, NI, E):
+    mu = mu_0_h * (300/T)**theta_mu_h
+    v_s = v_s_h * (300/T)**theta_v_s_h
+    c = c_h * (300/T)**theta_c_h
+    return mu/(1+(mu*E/v_s)**c)**(1/c)
+
 #RJ fit to electrons
 @jit(nopython=True)
 def mu0_el_RJ(T):

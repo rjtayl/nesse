@@ -52,12 +52,33 @@ def updateQuasiParticles(objects, ds, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp
         if diffusion:
             dv += ((diffusion_electron(temp) if objects[i].q < 0 else diffusion_hole(temp))/dt)**0.5*np.random.normal(size=3)
 
-        objects[i].addTime(objects[i].time[-1]+dt)
-        objects[i].addVel(dv)
-        objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
-
+        t = objects[i].time[-1]+dt
+        pos = objects[i].pos[-1]+dv*dt
         #Check if particles are still inside the specified boundaries, otherwise kill them
-        objects[i].alive = insideBoundaryCheck(objects[i].pos[-1], bounds)
+        objects[i].alive = insideBoundaryCheck(pos, bounds)
+
+        if objects[i].alive:
+            objects[i].addTime(t)
+            objects[i].addVel(dv)
+            objects[i].addPos(pos)
+        
+        else:
+            #currently only interpolates on z
+            objects[i].addVel(dv)
+            if pos[2] > bounds[2][1]:
+                # print("out of bounds, crossed top contact")
+                dt = (bounds[2][1] - objects[i].pos[-1][2])/objects[i].vel[-1][2]
+                objects[i].addTime(objects[i].time[-1]+dt)
+                objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
+            elif pos[2] < bounds[2][0]:
+                # print("out of bounds, crossed bottom contact")
+                dt = (bounds[2][0] - objects[i].pos[-1][2])/objects[i].vel[-1][2]
+                objects[i].addTime(objects[i].time[-1]+dt)
+                objects[i].addPos(objects[i].pos[-1]+objects[i].vel[-1]*dt)
+            else:
+                objects[i].addTime(t)
+                objects[i].addVel(dv)
+                objects[i].addPos(pos)
 
         #Check whether a particle is captured. If so, the particle is killed. 
         #dt must be substantially smaller than tauTrap in order for Poisson process to work

@@ -155,3 +155,23 @@ def plot_field_1D(field,x=0,y=0, prefix="",suffix="", show_plot=True, bounds=Non
     plt.savefig(prefix+"field" +suffix + ".png")
     
     return None
+
+def plot_potential_1D(potential,x=0,y=0, prefix="",suffix="", show_plot=True, bounds=None):
+                        
+    pot_interp = potential.interpolate(True)
+    
+    if bounds is None:
+        bounds = [[axis[0],axis[-1]] for axis in potential.grid]
+    
+    zs = np.linspace(bounds[2][0],bounds[2][1],100)
+    Ezs = [pot_interp([x,y,z]) for z in zs]
+
+    plt.plot(zs,Ezs)
+    plt.xlabel("z")
+    plt.ylabel("Potential")
+    
+    if show_plot: plt.show()
+    
+    plt.savefig(prefix+"potential" +suffix + ".png")
+    
+    return None

@@ -4,6 +4,7 @@ from scipy.interpolate import interp1d
 from scipy.integrate import cumulative_trapezoid
 from tqdm import tqdm
 import pickle
+import gc
 
 ##########
 # 
@@ -32,6 +33,10 @@ class Event:
         
         self.signal = {}
         self.signal_times = {}
+
+    def clearQP(self):
+        self.quasiparticles = []
+        gc.collect()
 
     def shift_pos(self,new_pos=[0,0,0]):
         shift = np.array(new_pos) - self.pos[0]

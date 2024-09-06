@@ -135,7 +135,7 @@ class Simulation:
         return None
 
     def simulate(self, events, ds, dt, coulomb=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, 
-                Efield=None, bounds=None, silence=False, parallel=False):
+                Efield=None, bounds=None, silence=False, parallel=False, detailed=False):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -187,28 +187,44 @@ class Simulation:
             # print("Total quasiparticles: %d" % len(cc))
             # t.set_description(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
             t.set_postfix_str(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
+            
+            if coulomb == False and parallel == True:
+                import multiprocessing as mp
 
-            # Loop over alive particles until all have been stopped/collected
-            pbar = tqdm(disable=silence)
-            while np.any(alive):
-                cc_new = updateQuasiParticles(list(compress(cc, alive)), ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
-                                              self.temp, diffusion=diffusion, coulomb=coulomb,NI=self.impurityConcentration,
-                                              mobility_e = self.mobility[0], mobility_h = self.mobility[1])
-                
-                counter = 0
-                for j in range(len(alive)):
-                    if alive[j]:
-                        cc[j] = cc_new[counter]
-                        counter+=1
+                #TODO: I can't figure out how to get around needing all these variable in the function for pool.map
+                # keep getting can't pickle local object error. 
+                def pC(c):
+                    return propagateCharge(c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                                                self.temp, diffusion=diffusion,NI=self.impurityConcentration,
+                                                mobility_e = self.mobility[0], mobility_h = self.mobility[1])
 
-                alive = np.array([o.alive for o in cc])
-                pbar.update(1)
+                with mp.Pool(processes=self.threads) as pool:
+                    cc = pool.map(pC, cc)
+                    
+            else:
+                # Loop over alive particles until all have been stopped/collected
+                pbar = tqdm(disable=silence)
+                while np.any(alive):
+                    cc_new = updateQuasiParticles(list(compress(cc, alive)), ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                                                self.temp, diffusion=diffusion, coulomb=coulomb,NI=self.impurityConcentration,
+                                                mobility_e = self.mobility[0], mobility_h = self.mobility[1])
+                    
+                    counter = 0
+                    for j in range(len(alive)):
+                        if alive[j]:
+                            cc[j] = cc_new[counter]
+                            counter+=1
+
+                    alive = np.array([o.alive for o in cc])
+                    pbar.update(1)
 
             event.quasiparticles = cc
 
         return events
 
-    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True, parallel=False):
+    # okay this is going to be more complicated than I hoped. We need to make it so every process can see the 
+    # interpolation without creating a bunch of copies. Gonna come back to this after I fix the other memory issues
+    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True, parallel=False, detailed=False):
         if contacts is None: contacts=np.arange(self.contacts)
         # if self.weightingField is None: self.setWeightingField()
 
@@ -222,22 +238,27 @@ class Simulation:
                 
                 del weightingField
             
-                for event in events:
-                    event.calculateInducedCurrent(dt, wf_interp, contact)
+                if not detailed and self.contact==1:
+                    for event in events:
+                        event.calculateInducedCurrent(dt, wf_interp, contact)
+                        event.clearQP() #doesnt seem to improve memory at all. 
+                else:
+                    for event in events:
+                        event.calculateInducedCurrent(dt, wf_interp, contact)
+
 
         elif parallel==True:
             import multiprocessing as mp
-            mp.set_start_method('spawn')
             
             for contact in contacts:
-                weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
+                weightingField = self.weightingPotential[contact].toField()
+                # weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
+                weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
                 wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
+                del weightingField
 
                 with mp.Pool(processes=self.threads) as pool:
-                    pool.map(lambda event: event.calc)
-
-    # okay this is going to be more complicated than I hoped. We need to make it so every process can see the 
-    # interpolation without creating a bunch of copies. Gonna come back to this after I fix the other memory issues
+                    pool.map(lambda event: event.calculateInducedCurrent(dt, wf_interp,contact), events)
 
     # def calculateInducedCharge(self, events, contacts = None):
     #     if contacts is None: contacts=np.arange(self.contacts)

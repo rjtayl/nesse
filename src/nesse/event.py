@@ -132,12 +132,19 @@ class Event:
         else:
             return np.pad(signal, (round(length/2),round(length/2)-len(signal)),"edge")
 
-def eventsFromG4root(filename, pixel=None, N=None):
+def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     import uproot
     import pandas
 
     file = uproot.open(filename)
     tree = file["ntuple/hits"]
+
+    angle_radians = np.radians(rotation)
+    rotation_matrix = np.array([
+        [np.cos(angle_radians), -np.sin(angle_radians), 0],
+        [np.sin(angle_radians), np.cos(angle_radians), 0],
+        [0, 0, 1]
+    ])
 
     try:
         df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber"], 
@@ -156,7 +163,7 @@ def eventsFromG4root(filename, pixel=None, N=None):
     for eID, group in gdf:
         if N is not None and i > N:
             break
-        event = Event(eID, group[["x", "y", "z"]].to_numpy(), group["eDep"].to_numpy(), group["time"].to_numpy())
+        event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(), group["time"].to_numpy())
         event.convertUnits(1e3,1e-3,1e-9)
         events.append(event)
         i+=1

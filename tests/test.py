@@ -13,7 +13,7 @@ def main():
     WP_filename = "config/Fields/NessieWP_4e7Linear0-150V_grid.hf"
 
     Efield=nesse.eFieldFromH5(EF_filename)  
-    weightingPotential = nessie.weightingPotentialFromH5(WP_filename)
+    weightingPotential = nesse.weightingPotentialFromH5(WP_filename)
 
     x = weightingPotential.grid[0].astype("double")
     y = weightingPotential.grid[1].astype("double")

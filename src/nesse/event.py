@@ -64,7 +64,7 @@ class Event:
         self.times *= timeConversionFactor
         return None
         
-    def calculateInducedCurrent(self, dt, WF_interp, contact=0):
+    def calculateInducedCurrent(self, dt, WF_interp, contact=0, detailed=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
         
         max_time = max([o.time[-1] for o in self.quasiparticles])
@@ -73,16 +73,29 @@ class Event:
         
         induced_I = np.zeros(len(times_I))
 
-        for i in range(len(self.quasiparticles)):
-            o = self.quasiparticles[i]
-            Is = [o.q*np.dot(o.vel[j],
-                        [weightingFieldx_interp(o.pos[j]),
-                         weightingFieldy_interp(o.pos[j]),
-                         weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+        if detailed:
+            for i in range(len(self.quasiparticles)):
+                o = self.quasiparticles[i]
+                Is = [o.q*np.dot(o.vel[j],
+                            [weightingFieldx_interp(o.pos[j]),
+                            weightingFieldy_interp(o.pos[j]),
+                            weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
 
-            if len(Is) > 0:
-                func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
+        else:
+            while len(self.quasiparticles) > 0:
+                o = self.quasiparticles.pop()
+                Is = [o.q*np.dot(o.vel[j],
+                            [weightingFieldx_interp(o.pos[j]),
+                            weightingFieldy_interp(o.pos[j]),
+                            weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
+
         
         self.dI[contact] = induced_I
         self.dt[contact]=times_I-start_time

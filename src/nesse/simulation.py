@@ -238,13 +238,14 @@ class Simulation:
                 
                 del weightingField
             
-                if not detailed and self.contact==1:
+                # if not detailed and self.contact==1:
+                if not detailed:
                     for event in events:
                         event.calculateInducedCurrent(dt, wf_interp, contact)
-                        event.clearQP() #doesnt seem to improve memory at all. 
+                        # event.clearQP() #Clearing quasiparticle data
                 else:
                     for event in events:
-                        event.calculateInducedCurrent(dt, wf_interp, contact)
+                        event.calculateInducedCurrent(dt, wf_interp, contact, detailed=False)
 
 
         elif parallel==True:

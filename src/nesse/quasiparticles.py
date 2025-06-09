@@ -6,8 +6,6 @@ class Quasiparticle:
     Container object for a generalized quasiparticle with arbitrary mass and charge.
     Tracks position and velocity.
     '''
-    __slots__ = ["q", "m","pos","vel","time","alive"] # allowed attributes. In theory reduces memory usage. I dont't
-                                                      # see a big effect but it isn't hurting anything.
 
     def __init__(self, q, m, t0, pos0, vel0):
         self.q = q

@@ -35,7 +35,7 @@ class Quasiparticle:
     def compressData(self):
         self.pos = np.array(self.pos, dtype=np.float32)
         self.vel = np.array(self.vel, dtype=np.float32)
-        self.time = np.array(self.time, dtype=np.float32)
+        self.time = np.array(self.time, dtype=np.float64) # sometimes interp1d throws a warning with float 32 but not 64
 
 def unitSphereVector(N):
     '''

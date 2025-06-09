@@ -2,9 +2,9 @@ import numpy as np
 import pyximport
 pyximport.install(setup_args={'include_dirs': [np.get_include()]})
 
-from numba import jit
+from numba import jit, guvectorize, int32, int64, float32, float64
 
-from .interp import _interp3D
+from .interp import _interp3D # type: ignore
 
 @jit(nopython=True)
 def find_first(item, vec):
@@ -13,6 +13,14 @@ def find_first(item, vec):
             return i
     return -1
 
+@guvectorize([(float64, float64[:], int64[:])], '(),(n)->()', nopython=True)
+def find_first(item, vec, out):
+    out[0] = -1
+    for i in range(vec.shape[0]):
+        if item < vec[i]:
+            out[0] = i
+            break  
+    
 @jit(nopython=True)
 def bisect_left(a, x):
     hi = len(a)
@@ -35,6 +43,17 @@ def get_ijk(t, x, y, z):
                 i_s[d] = i -1
                 
     return i_s
+
+@guvectorize([(float64[:], float64[:], float64[:], float64[:], int64[:])], 
+             '(d),(n),(n),(n)->(d)', nopython=True)
+def get_ijk(t, x, y, z, out):
+    axes = [x, y, z]
+    for d in range(3):
+        out[d] = 0
+        for i in range(axes[d].shape[0]):
+            if t[d] < axes[d][i]:
+                out[d] = i - 1
+                break
     
 
 class Interp3D(object):
@@ -95,3 +114,47 @@ class Interp3D(object):
         l,m,n = self.get_lmn(t, i, j, k)
 
         return _interp3D(self.v, l, m, n, X, Y, Z)
+    
+
+class Interp3D(object):
+    '''
+    Grid interpolator for 3-dimensional rectangular grid. 
+    Note that this is changed from above to work for non-regular grids.
+    get_ijk and get_lmn are seperate functions mainly for testing purposes.
+    '''
+    def __init__(self, v, x, y, z):
+        self.v = v
+        self.x = x
+        self.y = y
+        self.z = z
+        self.delta_x = np.diff(x)
+        self.delta_y = np.diff(y)
+        self.delta_z = np.diff(z)
+        
+    def get_ijk(self, t):
+        return find_first(t[0], self.x)-1, find_first(t[1], self.y)-1, find_first(t[2], self.z)-1
+
+    def get_lmn(self, t, i, j, k):
+        return i + (t[0]-self.x[i])/self.delta_x[i], j + (t[1]-self.y[j])/self.delta_y[j], k + (t[2]-self.z[k])/self.delta_z[k]
+
+    def __call__(self, t):
+        # Allow t to be a single coordinate (shape (3,)) or an array of coordinates (shape (N, 3))
+        t = np.asarray(t)
+        if t.ndim == 1:
+            # Single coordinate
+            X, Y, Z = self.v.shape
+            i, j, k = self.get_ijk(t)
+            l, m, n = self.get_lmn(t, i, j, k)
+            return _interp3D(self.v, l, m, n, X, Y, Z)
+        elif t.ndim == 2 and t.shape[1] == 3:
+            # Array of coordinates
+            X, Y, Z = self.v.shape
+            results = np.empty(t.shape[0], dtype=self.v.dtype)
+            for idx, coord in enumerate(t):
+                i, j, k = self.get_ijk(coord)
+                l, m, n = self.get_lmn(coord, i, j, k)
+                results[idx] = _interp3D(self.v, l, m, n, X, Y, Z)
+            return results
+        else:
+            raise ValueError("Input t must be shape (3,) or (N, 3)")
+

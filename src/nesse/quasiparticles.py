@@ -6,6 +6,9 @@ class Quasiparticle:
     Container object for a generalized quasiparticle with arbitrary mass and charge.
     Tracks position and velocity.
     '''
+    __slots__ = ["q", "m","pos","vel","time","alive"] # allowed attributes. In theory reduces memory usage. I dont't
+                                                      # see a big effect but it isn't hurting anything.
+
     def __init__(self, q, m, t0, pos0, vel0):
         self.q = q
         self.m = m
@@ -30,6 +33,11 @@ class Quasiparticle:
         self.t0 = [t0, ]
         self.pos = [p0, ]
         self.vel = [v0, ]
+    
+    def compressData(self):
+        self.pos = np.array(self.pos, dtype=np.float32)
+        self.vel = np.array(self.vel, dtype=np.float32)
+        self.time = np.array(self.time, dtype=np.float32)
 
 def unitSphereVector(N):
     '''

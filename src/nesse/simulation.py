@@ -218,6 +218,10 @@ class Simulation:
                     alive = np.array([o.alive for o in cc])
                     pbar.update(1)
 
+            #before returning particles, compress the data by changing from python list to numpy array
+            for charge in cc:
+                charge.compressData()
+    
             event.quasiparticles = cc
 
         return events

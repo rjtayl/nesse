@@ -5,6 +5,7 @@ from scipy.integrate import cumulative_trapezoid
 from tqdm import tqdm
 import pickle
 import gc
+import dask.array as da
 
 ##########
 # 
@@ -76,10 +77,10 @@ class Event:
         if detailed:
             for i in range(len(self.quasiparticles)):
                 o = self.quasiparticles[i]
-                Is = [o.q*np.dot(o.vel[j],
-                            [weightingFieldx_interp(o.pos[j]),
-                            weightingFieldy_interp(o.pos[j]),
-                            weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+                
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                            weightingFieldy_interp(o.pos),
+                            weightingFieldz_interp(o.pos))).T, axis=1)
 
                 if len(Is) > 0:
                     func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
@@ -87,10 +88,10 @@ class Event:
         else:
             while len(self.quasiparticles) > 0:
                 o = self.quasiparticles.pop()
-                Is = [o.q*np.dot(o.vel[j],
-                            [weightingFieldx_interp(o.pos[j]),
-                            weightingFieldy_interp(o.pos[j]),
-                            weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+                
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                            weightingFieldy_interp(o.pos),
+                            weightingFieldz_interp(o.pos))).T, axis=1)
 
                 if len(Is) > 0:
                     func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)

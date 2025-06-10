@@ -249,7 +249,7 @@ class Simulation:
                         # event.clearQP() #Clearing quasiparticle data
                 else:
                     for event in events:
-                        event.calculateInducedCurrent(dt, wf_interp, contact, detailed=False)
+                        event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
 
 
         elif parallel==True:

@@ -53,9 +53,17 @@ def total_size(o, handlers={}, verbose=False):
             if isinstance(o, typ):
                 s += sum(map(sizeof, handler(o)))
                 break
+
+        else:
+            if not hasattr(o.__class__, '__slots__'):
+                if hasattr(o, '__dict__'):
+                    s+=sizeof(o.__dict__) # no __slots__ *usually* means a __dict__, but some special builtin classes (such as `type(None)`) have neither
+                # else, `o` has no attributes at all, so sys.getsizeof() actually returned the correct value
+            else:
+                s+=sum(sizeof(getattr(o, x)) for x in o.__class__.__slots__ if hasattr(o, x))
         return s
 
-    return sizeof(o)
+    return sizeof(o) / 1024
 
 import linecache
 
@@ -89,7 +97,7 @@ def main():
     # print(tracemalloc.get_traced_memory())
 
     events_filename = "config/Events/e-_800keV_0inc.root"
-    Events = nesse.eventsFromG4root(events_filename)[:5]
+    Events = nesse.eventsFromG4root(events_filename)[:1]
 
     # print("Events:")
     # print(tracemalloc.get_traced_memory())
@@ -139,22 +147,45 @@ def main():
     snapshot = tracemalloc.take_snapshot()
     display_top(snapshot)
 
-    # sim.setWeightingField()
+    
 
-    # print("Weighting Field:")
+    sim.setWeightingField()
+
+    print("Weighting Field:")
+    snapshot = tracemalloc.take_snapshot()
+    display_top(snapshot)
     # print(tracemalloc.get_traced_memory())
 
-    print(total_size(Events))
-    sim.calculateInducedCurrent(Events, 1e-9, detailed=True)
-    print("Induced Current:")
-    print(tracemalloc.get_traced_memory())
-    print(total_size(Events))
+    # print("-----------------------------------")
+    # print(f"Events size: {total_size(Events)}")
+    # print(f"Event size: {total_size(Events[0])}")
+    # print(f"Quasiparticles size: {total_size(Events[0].quasiparticles)}")
+    # print(f"Quasiparticle size: {total_size(Events[0].quasiparticles[0])}")
+    # print(f"Quasiparticle pos size: {total_size(Events[0].quasiparticles[0].pos)}")
+
+    # print(f"Quasiparticle size: {total_size(Events[0].quasiparticles[0].compressData())}")
+
+    # print(np.size(Events[0].quasiparticles[0].time))
+    # print(np.size(Events[0].quasiparticles[0].pos))
+    # print(np.size(Events[0].quasiparticles[0].vel))
+
+    sim.calculateInducedCurrent(Events, 1e-9, detailed=False)
+    # print("Induced Current:")
+    # print(tracemalloc.get_traced_memory())
+ 
+    print(f"Events size: {total_size(Events)}")
+    print(f"Event size: {total_size(Events[0])}")
+
+    print(type(Events[0].dI[0]))
+    print(type(Events[0].dt[0]))
+
+    print("-----------------------------------")
 
     print("PostCurrent:")
     snapshot = tracemalloc.take_snapshot()
     display_top(snapshot)
 
-    sim.calculateElectronicResponse(Events)
+    # sim.calculateElectronicResponse(Events)
 
     return None
 

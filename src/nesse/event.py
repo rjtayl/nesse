@@ -103,7 +103,7 @@ class Event:
         
         return None    
     
-    def calculateInducedCurrent_eh(self, dt, WF_interp, electron = True):
+    def calculateInducedCurrent_eh(self, dt, WF_interp, electron = True, detailed=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
         
         max_time = max([o.time[-1] for o in self.quasiparticles])
@@ -114,17 +114,29 @@ class Event:
 
         ehs = [o for o in self.quasiparticles if o.q<0] if electron else [o for o in self.quasiparticles if o.q>0]
 
-        for i in range(len(ehs)):
-            o = ehs[i]
+        if detailed:
+            for i in range(len(ehs)):
+                o = ehs[i]
 
-            Is = [o.q*np.dot(o.vel[j],
-                        [weightingFieldx_interp(o.pos[j]),
-                         weightingFieldy_interp(o.pos[j]),
-                         weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                                weightingFieldy_interp(o.pos),
+                                weightingFieldz_interp(o.pos))).T, axis=1)
 
-            if len(Is) > 0:
-                func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
+        
+        else:
+            while len(ehs) > 0:
+                o = ehs.pop()
+                
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                            weightingFieldy_interp(o.pos),
+                            weightingFieldz_interp(o.pos))).T, axis=1)
+
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
         
         dI = induced_I
         dT =times_I-start_time

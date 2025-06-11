@@ -1,4 +1,12 @@
 import numpy as np
+import sys
+
+# Apparently building cython code on windows is a massive pain and pyMVSC at least makes your build environment correct
+# this is mostly so that you can develop the code on windows without rebuilding the entire thing constantly.
+if sys.platform.startswith('win'):
+    import pyMSVC
+    environment = pyMSVC.setup_environment()
+
 import pyximport
 pyximport.install(setup_args={'include_dirs': [np.get_include()]})
 

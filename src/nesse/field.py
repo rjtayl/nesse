@@ -79,7 +79,8 @@ class Field:
     def interpolate(self, interp3d=False):
         '''
         Returns linear interpolations of the field. 
-        interp3d is a cython implementation of grid interpolation, we have modified this from https://github.com/jglaser/interp3d to work for non-regular grids. 
+        interp3d is a cython implementation of grid interpolation, we have modified this from 
+        https://github.com/jglaser/interp3d to work for non-regular grids. 
         If interp3d is set to False instead the scipy RegularGridInterpolator will be used. 
         This is a pure python interpolator and is significantly slower. 
         Each interpolator takes input differently so which is used is tracked throughout the simulation.  
@@ -90,13 +91,14 @@ class Field:
         z = self.grid[2]
         
         if interp3d:
+            type = np.float32 #helps keep memory usage lower
             
-            fieldx_interp = Interp3D(self.fieldx.astype('double', order="C"), x,y,z)
-            fieldy_interp = Interp3D(self.fieldy.astype('double',order="C"), x,y,z)
-            fieldz_interp = Interp3D(self.fieldz.astype('double',order="C"), x,y,z)
+            fieldx_interp = Interp3D(self.fieldx.astype(type, order="C"), x,y,z)
+            fieldy_interp = Interp3D(self.fieldy.astype(type,order="C"), x,y,z)
+            fieldz_interp = Interp3D(self.fieldz.astype(type,order="C"), x,y,z)
             
             fieldMag = np.sqrt(self.fieldx**2+self.fieldy**2+self.fieldz**2)
-            fieldMag_interp = Interp3D(fieldMag.astype('double',order="C"), x,y,z)
+            fieldMag_interp = Interp3D(fieldMag.astype(type,order="C"), x,y,z)
             
         else:   
             fieldx_interp = RegularGridInterpolator((x,y,z),self.fieldx)

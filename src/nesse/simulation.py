@@ -275,8 +275,14 @@ class Simulation:
                 wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
                 del weightingField
 
+                def _calculate_induced_current_helper(args):
+                    event, dt, wf_interp, contact, detailed = args
+                    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
+                    return event
+
+                args_list = [(event, dt, wf_interp, contact, detailed) for event in events]
                 with mp.Pool(processes=self.threads) as pool:
-                    pool.map(lambda event: event.calculateInducedCurrent(dt, wf_interp,contact), events)
+                    pool.map(_calculate_induced_current_helper, args_list)
 
     # def calculateInducedCharge(self, events, contacts = None):
     #     if contacts is None: contacts=np.arange(self.contacts)

@@ -5,12 +5,12 @@ sys.path.append(os.getcwd()+"/src/")
 import nesse
 
 #@profile
-def main():
+def main(threads):
     ID = "4"
 
     print("Loading Data")
     events_filename = "config/Events/e-_800keV_0inc.root"
-    Events = nesse.eventsFromG4root(events_filename)[:10]
+    Events = nesse.eventsFromG4root(events_filename)[:1]
 
     EF_filename = "config/Fields/4e10/NessieEF_Base4e7Linear0-150.0V.hf"
     WP_filename = "config/Fields/NessieWP_4e7Linear0-150V_grid.hf"
@@ -30,18 +30,15 @@ def main():
     bounds = np.stack((ef_bounds[0],ef_bounds[1],[0,0.002]))
     sim.setBounds(bounds)
 
-    # nthreads_available = len(os.sched_getaffinity(0)) #only works on UNIX
-    nthreads_available = os.cpu_count()
-    print(f'Threads: {nthreads_available=}')
-    sim.setThreadNumber(nthreads_available)
+    sim.setThreadNumber(threads)
 
     print("Drifting Quasiparticles")
-    sim.simulate(Events, ds=1e-6, diffusion=True, dt=1e-10, maxPairs=10, silence=True, parallel=True)
+    sim.simulate(Events, ds=1e-6, diffusion=True, dt=1e-10, maxPairs=100, silence=True, parallel=True)
 
     sim.setWeightingField()
 
     print("Calculating induced current")
-    sim.calculateInducedCurrent(Events, 1e-9, detailed=False)
+    sim.calculateInducedCurrent(Events, 1e-9, detailed=False, parallel=True)
 
     print("Calculating electronic response")
     sim.calculateElectronicResponse(Events)
@@ -54,7 +51,13 @@ def main():
 if __name__ == "__main__":
     pr = cProfile.Profile()
     pr.enable()
-    main()
+
+    # nthreads_available = len(os.sched_getaffinity(0)) #only works on UNIX
+    nthreads_available = os.cpu_count()
+    print(f'Threads: {nthreads_available=}')
+
+    main(6) # On my machine (Windows AMD 5700x3D) this runs the fastest for 10 quasiparticles per deposition.
+            # This is probably a balance of number of quasiparticles per event and overhead of managing extra threads. 
     pr.disable()
 
     # Dump results:

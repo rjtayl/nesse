@@ -11,6 +11,18 @@ import copy
 from .mobility import *
 import os
 
+
+import multiprocessing as mp
+
+def _pC(args):
+    c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, temp, diffusion, NI, mobility_e, mobility_h = args
+    return propagateCharge(c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                            temp, diffusion=diffusion, NI=NI,
+                            mobility_e=mobility_e, mobility_h=mobility_h)
+
+def default_impurity_concentration(x,y,z, IDP=1):
+    return 1e16 * IDP
+
 #from line_profiler import LineProfiler
 
 #from joblib import Parallel, delayed
@@ -26,7 +38,7 @@ class Simulation:
     '''
     def __init__(self, _name, _temp, _electricField=None, _weightingPotential=None, _electricPotential=None,
                  _weightingField=None, _cceField=None, _chargeCaptureField=None, _electronicResponse=None, contacts=1,
-                 _impurityConcentration= lambda x, y, z : 1e16, _mobility = [generalized_mobility_el, generalized_mobility_h]):        
+                 _impurityConcentration= default_impurity_concentration, _mobility = [generalized_mobility_el, generalized_mobility_h]):        
         self.name = _name
         self.electricField = _electricField
         self.electricPotential = _electricPotential
@@ -189,17 +201,18 @@ class Simulation:
             t.set_postfix_str(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
             
             if coulomb == False and parallel == True:
-                import multiprocessing as mp
+                '''This is still fairly experimental. Note that you cannot have ANY lambda functions as an argument
+                   or else the pickling for the Pool will not work. This is why impurity concentration now has a global
+                   function outside the class.'''
+                args_list = [
+                    (c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                     self.temp, diffusion, self.impurityConcentration,
+                     self.mobility[0], self.mobility[1])
+                    for c in cc
+                ]
 
-                #TODO: I can't figure out how to get around needing all these variable in the function for pool.map
-                # keep getting can't pickle local object error. 
-                def pC(c):
-                    return propagateCharge(c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
-                                                self.temp, diffusion=diffusion,NI=self.impurityConcentration,
-                                                mobility_e = self.mobility[0], mobility_h = self.mobility[1])
-
-                with mp.Pool(processes=self.threads) as pool:
-                    cc = pool.map(pC, cc)
+                with mp.Pool(processes=int(self.threads)) as pool:
+                    cc = pool.map(_pC, args_list)
                     
             else:
                 # Loop over alive particles until all have been stopped/collected

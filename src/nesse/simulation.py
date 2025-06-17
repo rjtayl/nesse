@@ -14,7 +14,7 @@ import os
 
 import multiprocessing as mp
 
-def _pC(args):
+def propagateCharge_helper(args):
     c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, temp, diffusion, NI, mobility_e, mobility_h = args
     return propagateCharge(c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
                             temp, diffusion=diffusion, NI=NI,
@@ -22,6 +22,11 @@ def _pC(args):
 
 def default_impurity_concentration(x,y,z, IDP=1):
     return 1e16 * IDP
+
+def calculateInducedCurrent_helper(args):
+                    event, dt, wf_interp, contact, detailed = args
+                    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
+                    return event
 
 #from line_profiler import LineProfiler
 
@@ -212,7 +217,7 @@ class Simulation:
                 ]
 
                 with mp.Pool(processes=int(self.threads)) as pool:
-                    cc = pool.map(_pC, args_list)
+                    cc = pool.map(propagateCharge_helper, args_list)
                     
             else:
                 # Loop over alive particles until all have been stopped/collected
@@ -275,14 +280,9 @@ class Simulation:
                 wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
                 del weightingField
 
-                def _calculate_induced_current_helper(args):
-                    event, dt, wf_interp, contact, detailed = args
-                    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
-                    return event
-
                 args_list = [(event, dt, wf_interp, contact, detailed) for event in events]
                 with mp.Pool(processes=self.threads) as pool:
-                    pool.map(_calculate_induced_current_helper, args_list)
+                    pool.map(calculateInducedCurrent_helper, args_list)
 
     # def calculateInducedCharge(self, events, contacts = None):
     #     if contacts is None: contacts=np.arange(self.contacts)

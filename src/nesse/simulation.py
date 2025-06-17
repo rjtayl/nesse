@@ -2,7 +2,6 @@ import numpy as np
 from itertools import compress
 from .field import *
 from .quasiparticles import *
-from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
 from tqdm.auto import tqdm
 import csv
@@ -28,18 +27,9 @@ def calculateInducedCurrent_helper(args):
                     event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
                     return event
 
-#from line_profiler import LineProfiler
-
-#from joblib import Parallel, delayed
-#import multiprocessing
-
-#num_cores = multiprocessing.cpu_count()
-
 class Simulation:
     '''
-    Object contains all nessie objects needed to simulate a signal. 
-    Currently assumes only one contact.
-    
+    Object contains all nesse objects needed to simulate a signal. 
     '''
     def __init__(self, _name, _temp, _electricField=None, _weightingPotential=None, _electricPotential=None,
                  _weightingField=None, _cceField=None, _chargeCaptureField=None, _electronicResponse=None, contacts=1,
@@ -201,8 +191,7 @@ class Simulation:
             cc = cc_e + cc_h
 
             alive = np.ones(len(cc)) == 1
-            # print("Total quasiparticles: %d" % len(cc))
-            # t.set_description(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
+
             t.set_postfix_str(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
             
             if coulomb == False and parallel == True:
@@ -248,7 +237,6 @@ class Simulation:
     # interpolation without creating a bunch of copies. Gonna come back to this after I fix the other memory issues
     def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True, parallel=False, detailed=False):
         if contacts is None: contacts=np.arange(self.contacts)
-        # if self.weightingField is None: self.setWeightingField()
 
         if parallel == False:
             for contact in contacts:
@@ -258,18 +246,11 @@ class Simulation:
                 
                 del weightingField
             
-                # if not detailed and self.contact==1:
-                if not detailed:
-                    for event in events:
-                        event.calculateInducedCurrent(dt, wf_interp, contact)
-                        # event.clearQP() #Clearing quasiparticle data
-                else:
-                    for event in events:
-                        event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
+                for event in events:
+                    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
 
 
         elif parallel==True:
-            import multiprocessing as mp
             
             for contact in contacts:
                 weightingField = self.weightingPotential[contact].toField()
@@ -281,15 +262,10 @@ class Simulation:
                 args_list = [(event, dt, wf_interp, contact, detailed) for event in events]
                 with mp.Pool(processes=self.threads) as pool:
                     results = pool.map(calculateInducedCurrent_helper, args_list)
+
                 # Update the original events list with the processed events
                 for i, event in enumerate(results):
                     events[i] = event
-
-    # def calculateInducedCharge(self, events, contacts = None):
-    #     if contacts is None: contacts=np.arange(self.contacts)
-    #     for contact in contacts:
-    #         for event in events:
-    #             event.calculateInducedCurrent(dt, wf_interp, contact)
 
     def calculateElectronicResponse(self, events, contacts = None):
         if contacts is None: contacts=np.arange(self.contacts)

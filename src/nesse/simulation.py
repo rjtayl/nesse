@@ -253,8 +253,6 @@ class Simulation:
         if parallel == False:
             for contact in contacts:
                 weightingField = self.weightingPotential[contact].toField()
-                # weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
-                
                 weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
                 wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
                 
@@ -275,14 +273,17 @@ class Simulation:
             
             for contact in contacts:
                 weightingField = self.weightingPotential[contact].toField()
-                # weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
                 weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
                 wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
+                
                 del weightingField
 
                 args_list = [(event, dt, wf_interp, contact, detailed) for event in events]
                 with mp.Pool(processes=self.threads) as pool:
-                    pool.map(calculateInducedCurrent_helper, args_list)
+                    results = pool.map(calculateInducedCurrent_helper, args_list)
+                # Update the original events list with the processed events
+                for i, event in enumerate(results):
+                    events[i] = event
 
     # def calculateInducedCharge(self, events, contacts = None):
     #     if contacts is None: contacts=np.arange(self.contacts)

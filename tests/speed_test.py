@@ -10,7 +10,7 @@ def main(threads):
 
     print("Loading Data")
     events_filename = "config/Events/e-_800keV_0inc.root"
-    Events = nesse.eventsFromG4root(events_filename)[:50]
+    Events = nesse.eventsFromG4root(events_filename)[:5]
 
     EF_filename = "config/Fields/4e10/NessieEF_Base4e7Linear0-150.0V.hf"
     WP_filename = "config/Fields/NessieWP_4e7Linear0-150V_grid.hf"
@@ -38,10 +38,10 @@ def main(threads):
     sim.setWeightingField()
 
     print("Calculating induced current")
-    sim.calculateInducedCurrent(Events, 1e-9, detailed=False, parallel=False)
+    sim.calculateInducedCurrent(Events, 1e-9, detailed=False, parallel=True)
 
     print("Calculating electronic response")
-    sim.calculateElectronicResponse(Events)
+    sim.calculateElectronicResponse(Events, parallel=True)
 
     print("Saving Events")
     nesse.saveEventsNabPy(Events, "tempEvents")

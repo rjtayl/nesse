@@ -13,6 +13,10 @@ import os
 
 import multiprocessing as mp
 
+#TODO: right now all of the multiprocessing for simulation.py relies on first copying the objects, processing them,
+# then returning a list of new objects. This isn't ideal for memory use, but I think the Event memory usage is 
+#  sufficiently under control that we will save this to be improved in the future. 
+
 def propagateCharge_helper(args):
     c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, temp, diffusion, NI, mobility_e, mobility_h = args
     return propagateCharge(c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
@@ -23,9 +27,15 @@ def default_impurity_concentration(x,y,z, IDP=1):
     return 1e16 * IDP
 
 def calculateInducedCurrent_helper(args):
-                    event, dt, wf_interp, contact, detailed = args
-                    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
-                    return event
+    event, dt, wf_interp, contact, detailed = args
+    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
+    return event
+
+def calculateElectronicResponse_helper(args):
+    event, electronicResponse, contacts = args
+    for contact in contacts:
+        event.convolveElectronicResponse(electronicResponse, contact)
+    return event
 
 class Simulation:
     '''
@@ -232,8 +242,7 @@ class Simulation:
 
         return events
 
-    # okay this is going to be more complicated than I hoped. We need to make it so every process can see the 
-    # interpolation without creating a bunch of copies. Gonna come back to this after I fix the other memory issues
+    # TODO: If contacts are same geometry use same interpolation but shift positions? 
     def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True, parallel=False, detailed=False):
         if contacts is None: contacts=np.arange(self.contacts)
 
@@ -266,11 +275,21 @@ class Simulation:
                 for i, event in enumerate(results):
                     events[i] = event
 
-    def calculateElectronicResponse(self, events, contacts = None):
+    def calculateElectronicResponse(self, events, contacts = None, parallel=False):
         if contacts is None: contacts=np.arange(self.contacts)
-        for event in events:
-            for contact in contacts:
-                event.convolveElectronicResponse(self.electronicResponse, contact)
+
+        if parallel:
+            args_list = [(event, self.electronicResponse, contacts) for event in events]
+            with mp.Pool(processes=self.threads) as pool:
+                results = pool.map(calculateElectronicResponse_helper, args_list)
+
+            for i, event in enumerate(results):
+                    events[i] = event
+
+        else:
+            for event in events:
+                for contact in contacts:
+                    event.convolveElectronicResponse(self.electronicResponse, contact)
 
     def getSignals(self, events, dt, contacts = None, interp3d=True, parallel=False):
         self.calculateInducedCurrent(events, dt, contacts, interp3d, parallel=parallel)

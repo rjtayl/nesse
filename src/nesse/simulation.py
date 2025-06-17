@@ -120,7 +120,7 @@ class Simulation:
 
     def setElectronicResponse(self, spiceFile=None, t1=None,t2=None, length=7000):
         '''
-        This either takes spice output csv file or assumes a RC-CR signal shaping and the user has to specify each time constant
+        This either takes spice output csv file or assumes a CR-RC signal shaping and the user has to specify each time constant
         approximate values for Nab are 5 us and 7 ns
         '''
         if spiceFile is not None:
@@ -135,8 +135,7 @@ class Simulation:
         
         elif t1 is not None and t2 is not None:
             ts = np.arange(length)*1e-9
-            step = 1/(t1-t2) * (np.exp(-ts/t1)-np.exp(-ts/t2))
-            step = (np.exp(-ts/t1)-np.exp(-ts/t2))
+            step = t1/(t1-t2) * (np.exp(-ts/t1)-np.exp(-ts/t2))
             self.electronicResponse = {"times":ts, "step":step}
 
         return None

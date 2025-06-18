@@ -122,7 +122,7 @@ class Simulation:
         self.threads=N
         return None
 
-    def setChargeCollectionEfficiencyField(self, type, depth=None, bounds=None, p0=None,p1=None, oxide_t=None):
+    def setChargeCollectionEfficiency(self, type, depth=None, bounds=None, p0=None,p1=None, oxide_t=None):
         '''
         The primary purpose of this is to make a dead layer on the front face of the detector. We assume that the charge
         collection efficiency has been determined elsewhere (e.g. with GEANT), therefore NESSE does not account for 
@@ -201,7 +201,7 @@ class Simulation:
             simBounds = bounds
 
         if self.cceField is None:
-            self.setChargeCollectionEfficiencyField("hard")
+            self.setChargeCollectionEfficiency("hard")
 
         #Find electron and hole drift paths for each event
         for i in (t:=tqdm(range(len(events)))):

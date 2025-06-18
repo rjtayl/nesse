@@ -122,7 +122,7 @@ class Simulation:
         self.threads=N
         return None
 
-    def setChargeCollectionEfficiencyField(self, type, depth=None, bounds=None):
+    def setChargeCollectionEfficiencyField(self, type, depth=None, bounds=None, p0=None,p1=None, oxide_t=None):
         '''
         The primary purpose of this is to make a dead layer on the front face of the detector. We assume that the charge
         collection efficiency has been determined elsewhere (e.g. with GEANT), therefore NESSE does not account for 
@@ -140,7 +140,17 @@ class Simulation:
 
             self.cceField = lambda x,y,z: 0 if z<=d or z>=bounds[2][1] else 1
         
-        #TODO: soft and import models
+        if type == "soft":
+            #by default ignore the oxide layer contribution
+            if oxide_t is None:
+                p1=0 if p1 is None else p1
+                self.cceField = lambda x,y,z: 1-(p1-1)*np.exp(-z/depth) if z > bounds[2][0] else 0
+            else:
+                p0=0 if p0 is None else p0
+                p1=0 if p1 is None else p1
+                self.cceField = lambda x,y,z: 1-(p1-1)*np.exp(-(z-oxide_t)/depth) if z > oxide_t else p0
+        
+        #TODO: importing user models
 
         return None
 
@@ -221,7 +231,7 @@ class Simulation:
                         factor = pairNr/maxPairs
                         pairNr = maxPairs
 
-                    pairNr = floor(CCE*pairNr)
+                    pairNr = int(np.round(CCE*pairNr))
 
                     # TODO: Provide a radius to smooth initial charge cloud (currently 0)
                     cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])

@@ -122,7 +122,26 @@ class Simulation:
         self.threads=N
         return None
 
-    def setChargeCollectionEfficiencyField(self):
+    def setChargeCollectionEfficiencyField(self, type, depth=None, bounds=None):
+        '''
+        The primary purpose of this is to make a dead layer on the front face of the detector. We assume that the charge
+        collection efficiency has been determined elsewhere (e.g. with GEANT), therefore NESSE does not account for 
+        underdepleted detectors having a dead layer on the back of the detector. 
+
+        We only use analytical models for a "hard" and "soft" dead layer. 
+        '''
+        #TODO: impliment soft dead layer
+        if bounds is None:
+            bounds = self.bounds
+
+        if type == "hard":
+            #The edge of the detector should effectively be a dead layer always
+            d = bounds[2][0] if depth is None else depth
+
+            self.cceField = lambda x,y,z: 0 if z<=d or z>=bounds[2][1] else 1
+        
+        #TODO: soft and import models
+
         return None
 
     def setChargeCaptureField(self):
@@ -171,6 +190,9 @@ class Simulation:
         else: 
             simBounds = bounds
 
+        if self.cceField is None:
+            self.setChargeCollectionEfficiencyField("hard")
+
         #Find electron and hole drift paths for each event
         for i in (t:=tqdm(range(len(events)))):
             t.set_description(f"Drift Calculation", refresh=True)
@@ -187,15 +209,23 @@ class Simulation:
 
             # Add charge cloud parts at each position where energy was deposited
             for j in tqdm(range(len(event.pos)), disable=silence):
-                pairNr = int(pairs[j])
-                factor = 1
-                if pairNr > maxPairs:
-                    factor = pairNr/maxPairs
-                    pairNr = maxPairs
 
-                # TODO: Provide a radius to smooth initial charge cloud (currently 0)
-                cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
-                cc_h = cc_h + initializeChargeCloud(factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+                # check if charge is collected using CCE Field, if not we don't generate it. This is for the simple dead
+                # layer models, if using carrier lifetime models, rely on tauTrap instead.
+                CCE = self.cceField(*(event.pos[j]))
+                if CCE == 0: continue
+                else:
+                    pairNr = int(pairs[j])
+                    factor = 1
+                    if pairNr > maxPairs:
+                        factor = pairNr/maxPairs
+                        pairNr = maxPairs
+
+                    pairNr = floor(CCE*pairNr)
+
+                    # TODO: Provide a radius to smooth initial charge cloud (currently 0)
+                    cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+                    cc_h = cc_h + initializeChargeCloud(factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
 
             cc = cc_e + cc_h
 

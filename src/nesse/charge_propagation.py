@@ -89,5 +89,64 @@ def updateQuasiParticles(objects, ds, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp
 
     return objects
 
+def propagateCharge(object, ds, maxdt, Ex_i, Ey_i, Ez_i, E_i, bounds, temp, diffusion=True,
+                         tauTrap = lambda x, y, z : 1e9, NI = lambda x, y, z : 1e16,
+                         mobility_e = canali_mobility_e, mobility_h = canali_mobility_h):
+    
+    while object.alive:
+        pos = object.pos[-1]
+        dt = maxdt
+        Eeff = np.array([Ex_i(pos), Ey_i(pos), Ez_i(pos)])
+
+        if object.q < 0:
+            mu = mobility_e(temp, NI(*pos), np.linalg.norm(Eeff))
+            dv = -mu*Eeff
+            # print(mu, dv, Eeff[i])
+        else:
+            mu = mobility_h(temp, NI(*pos), np.linalg.norm(Eeff))
+            dv = mu*Eeff
+
+        dt = min(abs(ds/np.linalg.norm(dv)), maxdt)
+
+        if diffusion:
+            dv += ((diffusion_electron(temp) if object.q < 0 else diffusion_hole(temp))/dt)**0.5*np.random.normal(size=3)
+
+        t = object.time[-1]+dt
+        pos = object.pos[-1]+dv*dt
+        #Check if particles are still inside the specified boundaries, otherwise kill them
+        object.alive = insideBoundaryCheck(pos, bounds)
+
+        if object.alive:
+            object.addTime(t)
+            object.addVel(dv)
+            object.addPos(pos)
+        
+        else:
+            #currently only interpolates on z
+            object.addVel(dv)
+            if pos[2] > bounds[2][1]:
+                # print("out of bounds, crossed top contact")
+                dt = (bounds[2][1] - object.pos[-1][2])/object.vel[-1][2]
+                object.addTime(object.time[-1]+dt)
+                object.addPos(object.pos[-1]+object.vel[-1]*dt)
+            elif pos[2] < bounds[2][0]:
+                # print("out of bounds, crossed bottom contact")
+                dt = (bounds[2][0] - object.pos[-1][2])/object.vel[-1][2]
+                object.addTime(object.time[-1]+dt)
+                object.addPos(object.pos[-1]+object.vel[-1]*dt)
+            else:
+                object.addTime(t)
+                object.addVel(dv)
+                object.addPos(pos)
+
+        #Check whether a particle is captured. If so, the particle is killed. 
+        #dt must be substantially smaller than tauTrap in order for Poisson process to work
+        p = dt/tauTrap(*(object.pos[-1]))
+        r = np.random.random()
+        if r < p:
+            object.alive = False
+
+    return object
+
 if __name__ == "__main__":
-    x, y, z, t = propagateCarrier(0, 0, 0, 1e-4, lambda a : [0,], lambda a : [0,], lambda a: [-750e2,], lambda a : [-750e2,], [[-1, 1], [-1, 1], [0, 0.002]], 130, diffusion=True)
+    x, y, z, t = propagateCharge(0, 0, 0, 1e-4, lambda a : [0,], lambda a : [0,], lambda a: [-750e2,], lambda a : [-750e2,], [[-1, 1], [-1, 1], [0, 0.002]], 130, diffusion=True)

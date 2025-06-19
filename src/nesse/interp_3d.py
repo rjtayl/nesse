@@ -1,10 +1,18 @@
 import numpy as np
+import sys
+
+# Apparently building cython code on windows is a massive pain and pyMVSC at least makes your build environment correct
+# this is mostly so that you can develop the code on windows without rebuilding the entire thing constantly.
+if sys.platform.startswith('win'):
+    import pyMSVC
+    environment = pyMSVC.setup_environment()
+
 import pyximport
 pyximport.install(setup_args={'include_dirs': [np.get_include()]})
 
-from numba import jit
+from numba import jit, guvectorize, int32, int64, float32, float64
 
-from .interp import _interp3D
+from .interp import _interp3D # type: ignore
 
 @jit(nopython=True)
 def find_first(item, vec):
@@ -13,31 +21,28 @@ def find_first(item, vec):
             return i
     return -1
 
-@jit(nopython=True)
-def bisect_left(a, x):
-    hi = len(a)
-    lo = 0
-    while lo < hi:
-        mid = (lo + hi) // 2
-        if a[mid] < x:
-            lo = mid + 1
-        else:
-            hi = mid
-    return lo
+@guvectorize([(float64, float64[:], int64[:])], '(),(n)->()', nopython=True)
+def find_first_vector(item, vec, out):
+    out[0] = -1
+    for i in range(vec.shape[0]):
+        if item < vec[i]:
+            out[0] = i
+            break  
  
-@jit(nopython=True)
-def get_ijk(t, x, y, z):
-    i_s = [0,0,0]
-    axes = [x,y,z]
+
+@guvectorize([(float64[:], float64[:], float64[:], float64[:], int64[:])], 
+             '(d),(l),(m),(n)->(d)', nopython=True)
+def get_ijk_vector(t, x, y, z, out):
+    axes = [x, y, z]
     for d in range(3):
-        for i, val in enumerate(axes[d]):
-            if t[d] < val:
-                i_s[d] = i -1
-                
-    return i_s
+        out[d] = 0
+        for i in range(axes[d].shape[0]):
+            if t[d] < axes[d][i]:
+                out[d] = i - 1
+                break
     
 
-class Interp3D(object):
+class Interp3D_old(object):
     '''
     Grid interpolator for 3-dimensional regular rectangular grid. 
     This is an old version, see function below.
@@ -79,19 +84,43 @@ class Interp3D(object):
         
     def get_ijk(self, t):
         return find_first(t[0], self.x)-1, find_first(t[1], self.y)-1, find_first(t[2], self.z)-1
-
+    
     def get_lmn(self, t, i, j, k):
         return i + (t[0]-self.x[i])/self.delta_x[i], j + (t[1]-self.y[j])/self.delta_y[j], k + (t[2]-self.z[k])/self.delta_z[k]
+    
+    def get_lmn_vector(self, t, i, j, k):
+        #tried converting to jit, didn't speed up anything. 
+        # Vectorized version: t is (N, 3), i, j, k are arrays of length N
+        l = i + (t[:, 0] - self.x[i]) / self.delta_x[i]
+        m = j + (t[:, 1] - self.y[j]) / self.delta_y[j]
+        n = k + (t[:, 2] - self.z[k]) / self.delta_z[k]
+        return l, m, n
 
     def __call__(self, t):
-        X,Y,Z = self.v.shape[0], self.v.shape[1], self.v.shape[2]
+        # Allow t to be a single coordinate (shape (3,)) or an array of coordinates (shape (N, 3))
+        t = np.asarray(t)
+        if t.ndim == 1:
+            # Single coordinate
+            X, Y, Z = self.v.shape
+            i, j, k = self.get_ijk(t)
+            l, m, n = self.get_lmn(t, i, j, k)
+            return _interp3D(self.v, l, m, n, X, Y, Z)
+        elif t.ndim == 2 and t.shape[1] == 3:
+            # Array of coordinates
+            X, Y, Z = self.v.shape
 
-        #i = np.where(self.x>t[0])[0][0]-1
-        #j = np.where(self.y>t[1])[0][0]-1
-        #k = np.where(self.z>t[2])[0][0]-1
+            ijks= get_ijk_vector(t, self.x, self.y, self.z)
+            i = ijks[:, 0]
+            j = ijks[:, 1]
+            k = ijks[:, 2]
 
-        i,j,k = self.get_ijk(t)
-        
-        l,m,n = self.get_lmn(t, i, j, k)
+            l, m, n = self.get_lmn_vector(t, i, j, k)
 
-        return _interp3D(self.v, l, m, n, X, Y, Z)
+            #TODO: vectorize _interp3D
+            results = np.empty(t.shape[0], dtype=self.v.dtype)
+            for idx, coord in enumerate(t):
+                results[idx] = _interp3D(self.v, l[idx], m[idx], n[idx], X, Y, Z)
+            return results
+        else:
+            raise ValueError("Input t must be shape (3,) or (N, 3)")
+

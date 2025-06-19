@@ -5,7 +5,7 @@ Nab Event Shape Simulation Effort (NESSE) is a python based solid state detector
 ### Dependencies
 Please insure the following dependencies are installed if installing nesse manually.
 
-- Cython==0.29.32
+- Cython==3.1.2
 - uproot==4.3.7
 - numpy==1.24.3
 - scipy
@@ -14,6 +14,7 @@ Please insure the following dependencies are installed if installing nesse manua
 - numba
 - h5py
 - pandas
+- pyMSVC
 
 
 ### Install

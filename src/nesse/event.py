@@ -4,6 +4,8 @@ from scipy.interpolate import interp1d
 from scipy.integrate import cumulative_trapezoid
 from tqdm import tqdm
 import pickle
+import gc
+import dask.array as da
 
 ##########
 # 
@@ -33,6 +35,10 @@ class Event:
         self.signal = {}
         self.signal_times = {}
 
+    def clearQP(self):
+        self.quasiparticles = []
+        gc.collect()
+
     def shift_pos(self,new_pos=[0,0,0]):
         shift = np.array(new_pos) - self.pos[0]
         self.pos = self.pos + shift
@@ -43,7 +49,8 @@ class Event:
         temp_times = electronicResponse["times"]
         dt = np.diff(temp_times)[0]
         
-        self.signal[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])
+        self.signal[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])[:max(len(electronicResponse["times"]),
+                                                                                               len(temp_times))]
         self.signal_times[contact] = np.arange(0,len(self.signal[contact])*dt, dt)
         
         return None
@@ -59,7 +66,7 @@ class Event:
         self.times *= timeConversionFactor
         return None
         
-    def calculateInducedCurrent(self, dt, WF_interp, contact=0):
+    def calculateInducedCurrent(self, dt, WF_interp, contact=0, detailed=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
         
         max_time = max([o.time[-1] for o in self.quasiparticles])
@@ -68,23 +75,36 @@ class Event:
         
         induced_I = np.zeros(len(times_I))
 
-        for i in range(len(self.quasiparticles)):
-            o = self.quasiparticles[i]
-            Is = [o.q*np.dot(o.vel[j],
-                        [weightingFieldx_interp(o.pos[j]),
-                         weightingFieldy_interp(o.pos[j]),
-                         weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+        if detailed:
+            for i in range(len(self.quasiparticles)):
+                o = self.quasiparticles[i]
+                
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                            weightingFieldy_interp(o.pos),
+                            weightingFieldz_interp(o.pos))).T, axis=1)
 
-            if len(Is) > 0:
-                func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
+        else:
+            while len(self.quasiparticles) > 0:
+                o = self.quasiparticles.pop()
+                
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                            weightingFieldy_interp(o.pos),
+                            weightingFieldz_interp(o.pos))).T, axis=1)
+
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
+
         
         self.dI[contact] = induced_I
         self.dt[contact]=times_I-start_time
         
         return None    
     
-    def calculateInducedCurrent_eh(self, dt, WF_interp, electron = True):
+    def calculateInducedCurrent_eh(self, dt, WF_interp, electron = True, detailed=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
         
         max_time = max([o.time[-1] for o in self.quasiparticles])
@@ -95,17 +115,29 @@ class Event:
 
         ehs = [o for o in self.quasiparticles if o.q<0] if electron else [o for o in self.quasiparticles if o.q>0]
 
-        for i in range(len(ehs)):
-            o = ehs[i]
+        if detailed:
+            for i in range(len(ehs)):
+                o = ehs[i]
 
-            Is = [o.q*np.dot(o.vel[j],
-                        [weightingFieldx_interp(o.pos[j]),
-                         weightingFieldy_interp(o.pos[j]),
-                         weightingFieldz_interp(o.pos[j])]) for j in range(len(o.pos))]
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                                weightingFieldy_interp(o.pos),
+                                weightingFieldz_interp(o.pos))).T, axis=1)
 
-            if len(Is) > 0:
-                func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                induced_I += func_I(times_I)
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
+        
+        else:
+            while len(ehs) > 0:
+                o = ehs.pop()
+                
+                Is = o.q * np.sum(o.vel * np.array((weightingFieldx_interp(o.pos),
+                            weightingFieldy_interp(o.pos),
+                            weightingFieldz_interp(o.pos))).T, axis=1)
+
+                if len(Is) > 0:
+                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
+                    induced_I += func_I(times_I)
         
         dI = induced_I
         dT =times_I-start_time
@@ -125,12 +157,16 @@ class Event:
         Samples the signal of an event to larger timesteps so that it is the same format as nab data. 
         There is some question as to the proper way to do this; for now we simply take the value at the exact time sampled.
         '''
-        step = int(dt/(self.signal_times[contact][1]-self.signal_times[contact][0])) 
+        step = int(dt/(self.signal_times[contact][1]-self.signal_times[contact][0]))
         signal = self.signal[contact][::step].copy()
         if length==None:
             return signal
         else:
-            return np.pad(signal, (round(length/2),round(length/2)-len(signal)),"edge")
+            signal = np.pad(signal, (round(length/2),0),"edge")
+            if len(signal) >= length:
+                return signal[:length]
+            else:
+                return np.pad(signal, (0,length-len(signal)), "edge")
 
 def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     import uproot

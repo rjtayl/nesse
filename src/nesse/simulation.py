@@ -2,30 +2,48 @@ import numpy as np
 from itertools import compress
 from .field import *
 from .quasiparticles import *
-from scipy.interpolate import RegularGridInterpolator 
 from .charge_propagation import *
 from tqdm.auto import tqdm
 import csv
 from .silicon import *
 import copy
 from .mobility import *
+import os
 
-#from line_profiler import LineProfiler
 
-#from joblib import Parallel, delayed
-#import multiprocessing
+import multiprocessing as mp
 
-#num_cores = multiprocessing.cpu_count()
+#TODO: right now all of the multiprocessing for simulation.py relies on first copying the objects, processing them,
+# then returning a list of new objects. This isn't ideal for memory use, but I think the Event memory usage is 
+#  sufficiently under control that we will save this to be improved in the future. 
+
+def propagateCharge_helper(args):
+    c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds, temp, diffusion, NI, mobility_e, mobility_h = args
+    return propagateCharge(c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                            temp, diffusion=diffusion, NI=NI,
+                            mobility_e=mobility_e, mobility_h=mobility_h)
+
+def default_impurity_concentration(x,y,z, IDP=1):
+    return 1e16 * IDP
+
+def calculateInducedCurrent_helper(args):
+    event, dt, wf_interp, contact, detailed = args
+    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
+    return event
+
+def calculateElectronicResponse_helper(args):
+    event, electronicResponse, contacts = args
+    for contact in contacts:
+        event.convolveElectronicResponse(electronicResponse, contact)
+    return event
 
 class Simulation:
     '''
-    Object contains all nessie objects needed to simulate a signal. 
-    Currently assumes only one contact.
-    
+    Object contains all nesse objects needed to simulate a signal. 
     '''
     def __init__(self, _name, _temp, _electricField=None, _weightingPotential=None, _electricPotential=None,
                  _weightingField=None, _cceField=None, _chargeCaptureField=None, _electronicResponse=None, contacts=1,
-                 _impurityConcentration= lambda x, y, z : 1e16, _mobility = [generalized_mobility_el, generalized_mobility_h]):        
+                 _impurityConcentration= default_impurity_concentration, _mobility = [generalized_mobility_el, generalized_mobility_h]):        
         self.name = _name
         self.electricField = _electricField
         self.electricPotential = _electricPotential
@@ -39,6 +57,7 @@ class Simulation:
         self.contacts = contacts
         self.impurityConcentration = _impurityConcentration
         self.mobility = _mobility
+        self.threads = os.cpu_count()
 
         if contacts is not None and type(_weightingPotential) is not list:
             centers = find_centers(contacts)
@@ -98,8 +117,41 @@ class Simulation:
         except:
             print("No weighting potential from which to calculate weighting field.")
         return None
+    
+    def setThreadNumber(self, N):
+        self.threads=N
+        return None
 
-    def setChargeCollectionEfficiencyField(self):
+    def setChargeCollectionEfficiency(self, type, depth=None, bounds=None, p0=None,p1=None, oxide_t=None):
+        '''
+        The primary purpose of this is to make a dead layer on the front face of the detector. We assume that the charge
+        collection efficiency has been determined elsewhere (e.g. with GEANT), therefore NESSE does not account for 
+        underdepleted detectors having a dead layer on the back of the detector. 
+
+        We only use analytical models for a "hard" and "soft" dead layer. 
+        '''
+        #TODO: impliment soft dead layer
+        if bounds is None:
+            bounds = self.bounds
+
+        if type == "hard":
+            #The edge of the detector should effectively be a dead layer always
+            d = bounds[2][0] if depth is None else depth
+
+            self.cceField = lambda x,y,z: 0 if z<=d or z>=bounds[2][1] else 1
+        
+        if type == "soft":
+            #by default ignore the oxide layer contribution
+            if oxide_t is None:
+                p1=0 if p1 is None else p1
+                self.cceField = lambda x,y,z: 1-(p1-1)*np.exp(-z/depth) if z > bounds[2][0] else 0
+            else:
+                p0=0 if p0 is None else p0
+                p1=0 if p1 is None else p1
+                self.cceField = lambda x,y,z: 1-(p1-1)*np.exp(-(z-oxide_t)/depth) if z > oxide_t else p0
+        
+        #TODO: importing user models
+
         return None
 
     def setChargeCaptureField(self):
@@ -107,7 +159,7 @@ class Simulation:
 
     def setElectronicResponse(self, spiceFile=None, t1=None,t2=None, length=7000):
         '''
-        This either takes spice output csv file or assumes a RC-CR signal shaping and the user has to specify each time constant
+        This either takes spice output csv file or assumes a CR-RC signal shaping and the user has to specify each time constant
         approximate values for Nab are 5 us and 7 ns
         '''
         if spiceFile is not None:
@@ -122,14 +174,13 @@ class Simulation:
         
         elif t1 is not None and t2 is not None:
             ts = np.arange(length)*1e-9
-            step = 1/(t1-t2) * (np.exp(-ts/t1)-np.exp(-ts/t2))
-            step = (np.exp(-ts/t1)-np.exp(-ts/t2))
+            step = t1/(t1-t2) * (np.exp(-ts/t1)-np.exp(-ts/t2))
             self.electronicResponse = {"times":ts, "step":step}
 
         return None
 
     def simulate(self, events, ds, dt, coulomb=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, 
-                Efield=None, bounds=None, silence=False):
+                Efield=None, bounds=None, silence=False, parallel=False, detailed=False):
         '''
         Where it all happens! 
         When calling this function you determine which effects you want to simulate (eg. plasma, diffusion, etc.)
@@ -149,6 +200,9 @@ class Simulation:
         else: 
             simBounds = bounds
 
+        if self.cceField is None:
+            self.setChargeCollectionEfficiency("hard")
+
         #Find electron and hole drift paths for each event
         for i in (t:=tqdm(range(len(events)))):
             t.set_description(f"Drift Calculation", refresh=True)
@@ -165,67 +219,120 @@ class Simulation:
 
             # Add charge cloud parts at each position where energy was deposited
             for j in tqdm(range(len(event.pos)), disable=silence):
-                pairNr = int(pairs[j])
-                factor = 1
-                if pairNr > maxPairs:
-                    factor = pairNr/maxPairs
-                    pairNr = maxPairs
 
-                # TODO: Provide a radius to smooth initial charge cloud (currently 0)
-                cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
-                cc_h = cc_h + initializeChargeCloud(factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+                # check if charge is collected using CCE Field, if not we don't generate it. This is for the simple dead
+                # layer models, if using carrier lifetime models, rely on tauTrap instead.
+                CCE = self.cceField(*(event.pos[j]))
+                if CCE == 0: continue
+                else:
+                    pairNr = int(pairs[j])
+                    factor = 1
+                    if pairNr > maxPairs:
+                        factor = pairNr/maxPairs
+                        pairNr = maxPairs
+
+                    pairNr = int(np.round(CCE*pairNr))
+
+                    # TODO: Provide a radius to smooth initial charge cloud (currently 0)
+                    cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+                    cc_h = cc_h + initializeChargeCloud(factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
 
             cc = cc_e + cc_h
 
             alive = np.ones(len(cc)) == 1
-            # print("Total quasiparticles: %d" % len(cc))
-            # t.set_description(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
+
             t.set_postfix_str(f"Event {i}, Total quasiparticles: {len(cc)}", refresh=True)
+            
+            if coulomb == False and parallel == True:
+                '''This is still fairly experimental. Note that you cannot have ANY lambda functions as an argument
+                   or else the pickling for the Pool will not work. This is why impurity concentration now has a global
+                   function outside the class.'''
+                args_list = [
+                    (c, ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                     self.temp, diffusion, self.impurityConcentration,
+                     self.mobility[0], self.mobility[1])
+                    for c in cc
+                ]
 
-            # Loop over alive particles until all have been stopped/collected
-            pbar = tqdm(disable=silence)
-            while np.any(alive):
-                cc_new = updateQuasiParticles(list(compress(cc, alive)), ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
-                                              self.temp, diffusion=diffusion, coulomb=coulomb,NI=self.impurityConcentration,
-                                              mobility_e = self.mobility[0], mobility_h = self.mobility[1])
-                
-                counter = 0
-                for j in range(len(alive)):
-                    if alive[j]:
-                        cc[j] = cc_new[counter]
-                        counter+=1
+                with mp.Pool(processes=int(self.threads)) as pool:
+                    cc = pool.map(propagateCharge_helper, args_list)
+                    
+            else:
+                # Loop over alive particles until all have been stopped/collected
+                pbar = tqdm(disable=silence)
+                while np.any(alive):
+                    cc_new = updateQuasiParticles(list(compress(cc, alive)), ds, dt, Ex_i, Ey_i, Ez_i, Emag_i, simBounds,
+                                                self.temp, diffusion=diffusion, coulomb=coulomb,NI=self.impurityConcentration,
+                                                mobility_e = self.mobility[0], mobility_h = self.mobility[1])
+                    
+                    counter = 0
+                    for j in range(len(alive)):
+                        if alive[j]:
+                            cc[j] = cc_new[counter]
+                            counter+=1
 
-                alive = np.array([o.alive for o in cc])
-                pbar.update(1)
+                    alive = np.array([o.alive for o in cc])
+                    pbar.update(1)
 
+            #before returning particles, compress the data by changing from python list to numpy array
+            for charge in cc:
+                charge.compressData()
+    
             event.quasiparticles = cc
 
         return events
 
-    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True):
+    # TODO: If contacts are same geometry use same interpolation but shift positions? 
+    def calculateInducedCurrent(self, events, dt, contacts = None, interp3d=True, parallel=False, detailed=False):
         if contacts is None: contacts=np.arange(self.contacts)
-        if self.weightingField is None: self.setWeightingField()
-        for contact in contacts:
-            weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = self.weightingField[contact].interpolate(interp3d)
-            wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
-        
-            for event in events:
-                event.calculateInducedCurrent(dt, wf_interp, contact)
 
-    def calculateInducedCharge(self, events, contacts = None):
-        if contacts is None: contacts=np.arange(self.contacts)
-        for contact in contacts:
-            for event in events:
-                event.calculateIntegratedCharge(contact)
-
-    def calculateElectronicResponse(self, events, contacts = None):
-        if contacts is None: contacts=np.arange(self.contacts)
-        for event in events:
+        if parallel == False:
             for contact in contacts:
-                event.convolveElectronicResponse(self.electronicResponse, contact)
+                weightingField = self.weightingPotential[contact].toField()
+                weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
+                wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
+                
+                del weightingField
+            
+                for event in events:
+                    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
 
-    def getSignals(self, events, dt, contacts = None, interp3d=True):
-        self.calculateInducedCurrent(events, dt, contacts, interp3d)
+
+        elif parallel==True:
+            
+            for contact in contacts:
+                weightingField = self.weightingPotential[contact].toField()
+                weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
+                wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
+                
+                del weightingField
+
+                args_list = [(event, dt, wf_interp, contact, detailed) for event in events]
+                with mp.Pool(processes=self.threads) as pool:
+                    results = pool.map(calculateInducedCurrent_helper, args_list)
+
+                # Update the original events list with the processed events
+                for i, event in enumerate(results):
+                    events[i] = event
+
+    def calculateElectronicResponse(self, events, contacts = None, parallel=False):
+        if contacts is None: contacts=np.arange(self.contacts)
+
+        if parallel:
+            args_list = [(event, self.electronicResponse, contacts) for event in events]
+            with mp.Pool(processes=self.threads) as pool:
+                results = pool.map(calculateElectronicResponse_helper, args_list)
+
+            for i, event in enumerate(results):
+                    events[i] = event
+
+        else:
+            for event in events:
+                for contact in contacts:
+                    event.convolveElectronicResponse(self.electronicResponse, contact)
+
+    def getSignals(self, events, dt, contacts = None, interp3d=True, parallel=False):
+        self.calculateInducedCurrent(events, dt, contacts, interp3d, parallel=parallel)
         self.calculateElectronicResponse(events, contacts)
 
 def find_centers(N,R=5.15e-3,s=0.1e-3):    

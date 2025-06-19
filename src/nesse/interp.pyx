@@ -6,12 +6,12 @@ from libc.math cimport floor
 from cython cimport boundscheck, wraparound, nonecheck, cdivision
 
 @cdivision(True)
-cpdef np.float_t _interp3D(np.float_t[:,:,::1] v, np.float_t x, np.float_t y, np.float_t z, int X, int Y, int Z):
+cpdef np.float32_t _interp3D(np.float32_t[:,:,::1] v, np.float32_t x, np.float32_t y, np.float32_t z, int X, int Y, int Z):
 
     cdef:
         int i, x0, x1, y0, y1, z0, z1, dim
-        np.float_t xd, yd, zd, c00, c01, c10, c11, c0, c1, c
-        np.float_t *v_c
+        np.float32_t xd, yd, zd, c00, c01, c10, c11, c0, c1, c
+        np.float32_t *v_c
 
     v_c = &v[0,0,0]
 

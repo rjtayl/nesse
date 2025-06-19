@@ -133,6 +133,8 @@ dmypy.json
 
 # config files
 *.hf
+!/config/Fields/NessieWP_4e7Linear0-150V_grid.hf
+!/config/Fields/NessieEF_Base4e7Linear0-150.0V.hf
 *.root
 
 # event files

@@ -49,7 +49,8 @@ class Event:
         temp_times = electronicResponse["times"]
         dt = np.diff(temp_times)[0]
         
-        self.signal[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])
+        self.signal[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])[:max(len(electronicResponse["times"]),
+                                                                                               len(temp_times))]
         self.signal_times[contact] = np.arange(0,len(self.signal[contact])*dt, dt)
         
         return None

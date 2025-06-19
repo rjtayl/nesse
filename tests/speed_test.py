@@ -70,3 +70,5 @@ if __name__ == "__main__":
         sys.stdout = output_file
         pr.print_stats( sort='time' )
         sys.stdout = sys.__stdout__
+
+    #run 'snakeviz output.prof' in terminal to see results

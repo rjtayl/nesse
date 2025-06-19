@@ -157,12 +157,16 @@ class Event:
         Samples the signal of an event to larger timesteps so that it is the same format as nab data. 
         There is some question as to the proper way to do this; for now we simply take the value at the exact time sampled.
         '''
-        step = int(dt/(self.signal_times[contact][1]-self.signal_times[contact][0])) 
+        step = int(dt/(self.signal_times[contact][1]-self.signal_times[contact][0]))
         signal = self.signal[contact][::step].copy()
         if length==None:
             return signal
         else:
-            return np.pad(signal, (round(length/2),round(length/2)-len(signal)),"edge")
+            signal = np.pad(signal, (round(length/2),0),"edge")
+            if len(signal) >= length:
+                return signal[:length]
+            else:
+                return np.pad(signal, (0,length-len(signal)), "edge")
 
 def eventsFromG4root(filename, pixel=None, N=None):
     import uproot

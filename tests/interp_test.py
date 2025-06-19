@@ -13,7 +13,7 @@ import time
 #@profile
 def main():
     #import SSD fields
-    EF_filename = "config/Fields/NessieEF_Base4e7Linear0-150.0V.hf"
+    EF_filename = "config/Fields/4e10/NessieEF_Base4e7Linear0-150.0V.hf"
 
     Efield=nesse.fieldFromH5(EF_filename, rotate90=True)  
 
@@ -46,15 +46,7 @@ def main():
 
     diff = efields_new-efields_old
     print(np.average(diff))
-    print(diff[111:130])
-    print(efields_new[111:130])
-    print(efields_old[111:130])
-    # print(np.argwhere(Efield.grid[0]==0.0))
-    # print(np.argwhere(Efield.grid[1]==0.0))
-    # print(np.argwhere(Efield.grid[2]==0.0))
-    # print(np.argwhere(Efield.grid[2]==0.002))
-    # print(Efield.fieldz[187,172,20])
-
+    
 if __name__ == "__main__":
     #cProfile.run('main()')
     main()  

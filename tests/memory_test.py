@@ -94,26 +94,16 @@ def display_top(snapshot, key_type='lineno', limit=10):
 def main():
     tracemalloc.start()
     ID = "4"
-    # print(tracemalloc.get_traced_memory())
 
     events_filename = "config/Events/e-_800keV_0inc.root"
     Events = nesse.eventsFromG4root(events_filename)[:1]
 
-    # print("Events:")
-    # print(tracemalloc.get_traced_memory())
-
-    EF_filename = "config/Fields/NessieEF_Base4e7Linear0-150.0V.hf"
+    EF_filename = "config/Fields/4e10/NessieEF_Base4e7Linear0-150.0V.hf"
     WP_filename = "config/Fields/NessieWP_4e7Linear0-150V_grid.hf"
 
-
     Efield=nesse.fieldFromH5(EF_filename, rotate90=True)  
-    # print("EField:")
-    # print(tracemalloc.get_traced_memory())
-
 
     weightingPotential = nesse.potentialFromH5(WP_filename, rotate90=True)
-    # print("WP:")
-    # print(tracemalloc.get_traced_memory())
 
     print("Presim:")
     snapshot = tracemalloc.take_snapshot()
@@ -130,54 +120,27 @@ def main():
     bounds = np.stack((ef_bounds[0],ef_bounds[1],[0,0.002]))
     sim.setBounds(bounds)
 
-    # print("Sim:")
-    # print(tracemalloc.get_traced_memory())
-
     print("Sim:")
     snapshot = tracemalloc.take_snapshot()
     display_top(snapshot)
 
     sim.setThreadNumber(6)
 
-    sim.simulate(Events, ds=1e-6, diffusion=False, dt=1e-10, maxPairs=1, silence=True, parallel=False)
+    sim.simulate(Events, ds=1e-6, diffusion=False, dt=1e-9, maxPairs=1, silence=True, parallel=False)
 
-    # print("Simulated:")
-    # print(tracemalloc.get_traced_memory())
     print("Postsim:")
     snapshot = tracemalloc.take_snapshot()
     display_top(snapshot)
-
-    
-
     sim.setWeightingField()
 
     print("Weighting Field:")
     snapshot = tracemalloc.take_snapshot()
     display_top(snapshot)
-    # print(tracemalloc.get_traced_memory())
-
-    # print("-----------------------------------")
-    # print(f"Events size: {total_size(Events)}")
-    # print(f"Event size: {total_size(Events[0])}")
-    # print(f"Quasiparticles size: {total_size(Events[0].quasiparticles)}")
-    # print(f"Quasiparticle size: {total_size(Events[0].quasiparticles[0])}")
-    # print(f"Quasiparticle pos size: {total_size(Events[0].quasiparticles[0].pos)}")
-
-    # print(f"Quasiparticle size: {total_size(Events[0].quasiparticles[0].compressData())}")
-
-    # print(np.size(Events[0].quasiparticles[0].time))
-    # print(np.size(Events[0].quasiparticles[0].pos))
-    # print(np.size(Events[0].quasiparticles[0].vel))
 
     sim.calculateInducedCurrent(Events, 1e-9, detailed=False)
-    # print("Induced Current:")
-    # print(tracemalloc.get_traced_memory())
  
     print(f"Events size: {total_size(Events)}")
     print(f"Event size: {total_size(Events[0])}")
-
-    print(type(Events[0].dI[0]))
-    print(type(Events[0].dt[0]))
 
     print("-----------------------------------")
 

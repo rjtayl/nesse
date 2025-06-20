@@ -16,6 +16,7 @@ Please insure the following dependencies are installed if installing nesse manua
 - pandas
 - pyMSVC
 
+Currently this will only work for Python versions 3.7-3.11 due to some of the above dependencies. Python packaging does not like when you specify upper bounds on python versions so you, the user, will have check this yourself.
 
 ### Install
 nesse can either be installed using pip or manually.

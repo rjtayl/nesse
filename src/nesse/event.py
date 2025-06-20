@@ -5,7 +5,6 @@ from scipy.integrate import cumulative_trapezoid
 from tqdm import tqdm
 import pickle
 import gc
-import dask.array as da
 
 ##########
 # 

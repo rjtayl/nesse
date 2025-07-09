@@ -1,14 +1,14 @@
 import numpy as np
 import sys
 
-# Apparently building cython code on windows is a massive pain and pyMVSC at least makes your build environment correct
-# this is mostly so that you can develop the code on windows without rebuilding the entire thing constantly.
-if sys.platform.startswith('win'):
-    import pyMSVC
-    environment = pyMSVC.setup_environment()
+# # Apparently building cython code on windows is a massive pain and pyMVSC at least makes your build environment correct
+# # this is mostly so that you can develop the code on windows without rebuilding the entire thing constantly.
+# if sys.platform.startswith('win'):
+#     import pyMSVC
+#     environment = pyMSVC.setup_environment()
 
-import pyximport
-pyximport.install(setup_args={'include_dirs': [np.get_include()]})
+# import pyximport
+# pyximport.install(setup_args={'include_dirs': [np.get_include()]})
 
 from numba import jit, guvectorize, int32, int64, float32, float64
 
@@ -86,11 +86,20 @@ class Interp3D(object):
         return find_first(t[0], self.x)-1, find_first(t[1], self.y)-1, find_first(t[2], self.z)-1
     
     def get_lmn(self, t, i, j, k):
-        return i + (t[0]-self.x[i])/self.delta_x[i], j + (t[1]-self.y[j])/self.delta_y[j], k + (t[2]-self.z[k])/self.delta_z[k]
+        i = min(max(i, 0), len(self.delta_x) - 1)
+        j = min(max(j, 0), len(self.delta_y) - 1)
+        k = min(max(k, 0), len(self.delta_z) - 1)
+        return i + (t[0]-self.x[i])/self.delta_x[i], \
+               j + (t[1]-self.y[j])/self.delta_y[j], \
+               k + (t[2]-self.z[k])/self.delta_z[k]
     
     def get_lmn_vector(self, t, i, j, k):
         #tried converting to jit, didn't speed up anything. 
         # Vectorized version: t is (N, 3), i, j, k are arrays of length N
+        i = np.clip(i, 0, len(self.delta_x) - 1)
+        j = np.clip(j, 0, len(self.delta_y) - 1)
+        k = np.clip(k, 0, len(self.delta_z) - 1)
+
         l = i + (t[:, 0] - self.x[i]) / self.delta_x[i]
         m = j + (t[:, 1] - self.y[j]) / self.delta_y[j]
         n = k + (t[:, 2] - self.z[k]) / self.delta_z[k]

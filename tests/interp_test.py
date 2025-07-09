@@ -4,49 +4,41 @@ import sys
 sys.path.append(os.getcwd()+"/src/")
 import nesse
 import numpy as np
-import matplotlib.pyplot as plt
-import cProfile
-import pstats
-from pstats import SortKey
-import time
 
-#@profile
-def main():
-    #import SSD fields
-    EF_filename = "config/Fields/4e10/NessieEF_Base4e7Linear0-150.0V.hf"
+def test_interp():
+    potential_func = lambda x,y,z: x + y + 2*z
+    bounds = [[-1,1],[-1,1],[0,2]]
 
-    Efield=nesse.fieldFromH5(EF_filename, rotate90=True)  
-
-    eFieldx_interp, eFieldy_interp, eFieldz_interp, eFieldMag_interp = Efield.interpolate(True)
+    ds = 0.1
     
-    #Ef = [eFieldz_interp([0,0,z]) for z in np.linspace(-0.001,0.002,10000)]
-    
-    zs = list(np.linspace(-0.001,0.002,100000))
-    coords = [[0,0,z] for z in zs]
-    cProfile.runctx('[eFieldz_interp([0,0,z]) for z in zs]', {'eFieldz_interp':eFieldz_interp, 'zs':zs},{}, 'interp_stats')
+    potential=nesse.analytical_potential("test", potential_func, bounds, ds, ds, ds)
 
-    p1 = pstats.Stats('interp_stats')
-    p1.sort_stats(SortKey.FILENAME).print_stats('interp_3d.py')
-    p1.sort_stats(SortKey.FILENAME).print_stats('_interp3D')
+    x = potential.grid[0].astype(np.float32)
+    y = potential.grid[1].astype(np.float32)
+    z = potential.grid[2].astype(np.float32)
     
-    #Note: cProfile doesnt appear to play nice with jit functions so its reporting a much longer run time than real
-    cProfile.runctx('eFieldz_interp(coords)', {'eFieldz_interp':eFieldz_interp, 'coords':coords},{}, 'interp_stats_vector')
+    v = potential.data.astype(np.float32,order="C")
     
-    p = pstats.Stats('interp_stats_vector')
-    p.sort_stats(SortKey.FILENAME).print_stats('interp_3d.py')
-    p.sort_stats(SortKey.FILENAME).print_stats('_interp3D')
-
-    t0 = time.time()
-    efields_old = [eFieldz_interp([0,0,z]) for z in zs]
-    t1 = time.time()
-    efields_new = eFieldz_interp(coords)
-    t2 = time.time()
-
-    print(f"Old time: {t1-t0} \n New time: {t2-t1}")
-
-    diff = efields_new-efields_old
-    print(np.average(diff))
+    interp = nesse.Interp3D(v,x,y,z)
     
+    #check basic linear interpolation
+    positions = np.array([[0,0,0], [0.5,0.5,1], [0.5,0.5,0.15]], dtype=np.float32)
+
+    expected = [np.round(potential_func(*pos), 5) for pos in positions]
+    interped = [np.round(interp(pos), 5) for pos in positions]
+
+    assert expected == interped, f"Interpolation does not match analytical results: {expected}, {interped}"
+
+    # check out of bounds
+    positions = np.array([[-1.05,0,0],[-1,-1,-2], [1,1,2], [2,0,0]], dtype=np.float32)
+    expected = [0 for pos in positions]
+    interped = [np.round(interp(pos), 5) for pos in positions]
+
+    t=positions[-1]
+    i, j, k = interp.get_ijk(t)
+    l, m, n = interp.get_lmn(t, i, j, k)
+
+    assert expected == interped, f"Interpolation returns non-zero result out of bounds: {interped}"
+
 if __name__ == "__main__":
-    #cProfile.run('main()')
-    main()  
+    test_interp()  

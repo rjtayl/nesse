@@ -12,7 +12,7 @@ import sys
 
 from numba import jit, guvectorize, int32, int64, float32, float64
 
-from .interp import _interp3D # type: ignore
+from .interp import _interp3D
 
 @jit(nopython=True)
 def find_first(item, vec):

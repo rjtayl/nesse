@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools", "Cython"]
+requires = ["setuptools","wheel", "Cython", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -11,7 +11,7 @@ authors = [
 ]
 description = "A solid state detector simulation developed for the Nab experiment."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.8"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -28,10 +28,12 @@ dependencies = [
     "numba",
     "h5py",
     "uproot==4.3.7",
-    "pandas",
-    "pyMSVC"
+    "pandas"
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/rjtayl/nesse"
 "Bug Tracker" = "https://github.com/rjtayl/nesse/issues"
+
+[tool.cibuildwheel]
+skip = ["cp312-*", "cp313-*", "*-win32"]

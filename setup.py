@@ -30,7 +30,7 @@ except ImportError:
 
 ext = '.pyx' if USE_CYTHON else '.c'
 
-extensions = [Extension("interp", ["src/nesse/interp"+ext])]
+extensions = [Extension("nesse.interp", ["src/nesse/interp"+ext])]
 
 if USE_CYTHON:
     extensions = cythonize(extensions)

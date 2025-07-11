@@ -36,4 +36,4 @@ dependencies = [
 "Bug Tracker" = "https://github.com/rjtayl/nesse/issues"
 
 [tool.cibuildwheel]
-skip = ["cp312-*", "cp313-*", "*-win32"]
+skip = ["cp313-*", "*-win32"]

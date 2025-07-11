@@ -13,6 +13,7 @@ RUN \
 
 COPY pyproject.toml .
 COPY MANIFEST.in .
-COPY src/nesse ./nesse
+COPY setup.py .
+COPY src/nesse ./src/nesse
 
 RUN pip install .

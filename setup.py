@@ -3,19 +3,9 @@ import os
 
 from setuptools import Extension, setup
 import numpy
+from Cython.Build import cythonize
 
-try:
-    from Cython.Build import cythonize
-    USE_CYTHON = True
-except ImportError:
-    USE_CYTHON = False
-
-ext = '.pyx' if USE_CYTHON else '.c'
-
-extensions = [Extension("nesse.interp", ["src/nesse/interp"+ext])]
-
-if USE_CYTHON:
-    extensions = cythonize(extensions)
+extensions = cythonize([Extension("nesse.interp", ["src/nesse/interp.pyx"])])
 
 setup(
     ext_modules = extensions,

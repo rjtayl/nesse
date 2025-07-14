@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "nesse"
-version = "0.2.0"
+version = "0.2.1"
 authors = [
     {name = "RJ Taylor", email = "rjtaylo2@ncsu.edu"},
     {name = "Leendert Hayen", email = "hayen@lpccaen.in2p3.fr"}  
@@ -23,7 +23,7 @@ dependencies = [
     "numpy==1.24.3",
     "scipy",
     "tqdm",
-    "Cython==3.1.2",
+    "Cython",
     "matplotlib",
     "numba",
     "h5py",

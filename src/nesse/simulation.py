@@ -144,11 +144,11 @@ class Simulation:
             #by default ignore the oxide layer contribution
             if oxide_t is None:
                 p1=0 if p1 is None else p1
-                self.cceField = lambda x,y,z: 1-(p1-1)*np.exp(-z/depth) if z > bounds[2][0] else 0
+                self.cceField = lambda x,y,z: 1+(p1-1)*np.exp(-z/depth) if z > bounds[2][0] else 0
             else:
                 p0=0 if p0 is None else p0
                 p1=0 if p1 is None else p1
-                self.cceField = lambda x,y,z: 1-(p1-1)*np.exp(-(z-oxide_t)/depth) if z > oxide_t else p0
+                self.cceField = lambda x,y,z: 1+(p1-1)*np.exp(-(z-oxide_t)/depth) if z > oxide_t else p0
         
         #TODO: importing user models
 

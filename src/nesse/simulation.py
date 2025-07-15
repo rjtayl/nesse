@@ -287,7 +287,9 @@ class Simulation:
         if contacts is None: contacts=np.arange(self.contacts)
 
         if parallel == False:
-            for contact in contacts:
+            for i_contact in range(len(contacts)):
+                contact= contacts[i_contact]
+                
                 weightingField = self.weightingPotential[contact].toField()
                 weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
                 wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
@@ -295,19 +297,28 @@ class Simulation:
                 del weightingField
             
                 for event in events:
-                    event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
+                    if i_contact == len(contacts)-1:
+                        event.calculateInducedCurrent(dt, wf_interp, contact, detailed=detailed)
+                    else:
+                        event.calculateInducedCurrent(dt, wf_interp, contact, detailed=True)
 
 
         elif parallel==True:
             
-            for contact in contacts:
+            for i_contact in range(len(contacts)):
+                contact= contacts[i_contact]
+
                 weightingField = self.weightingPotential[contact].toField()
                 weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = weightingField.interpolate(interp3d)
                 wf_interp = [weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp]
                 
                 del weightingField
 
-                args_list = [(event, dt, wf_interp, contact, detailed) for event in events]
+                if i_contact == len(contacts)-1:
+                    args_list = [(event, dt, wf_interp, contact, detailed) for event in events]
+                else:
+                    args_list = [(event, dt, wf_interp, contact, True) for event in events]
+                
                 with mp.Pool(processes=self.threads) as pool:
                     results = pool.map(calculateInducedCurrent_helper, args_list)
 

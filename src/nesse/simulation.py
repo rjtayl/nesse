@@ -196,7 +196,9 @@ class Simulation:
             Ex_i, Ey_i, Ez_i, Emag_i= Efield
         
         if bounds is None:
-            simBounds = self.bounds if self.bounds is not None else [[axis[0],axis[-1]] for axis in self.electricField.grid]
+            if self.bounds is None: 
+                self.bounds = [[axis[0],axis[-1]] for axis in self.electricField.grid]
+            simBounds = self.bounds
         else: 
             simBounds = bounds
 

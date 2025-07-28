@@ -172,7 +172,7 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     import pandas
 
     file = uproot.open(filename)
-    tree = file["ntuple/hits"]
+    tree = file["dynamicTree"]
 
     angle_radians = np.radians(rotation)
     rotation_matrix = np.array([
@@ -182,16 +182,16 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     ])
 
     try:
-        df = tree.arrays(["eventID", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy", "pixelNumber"], 
+        df = tree.arrays(["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy", "pixelNumber"], 
                         library="pd")
         if pixel is not None:
             df = df[df["pixelNumber"]==pixel]
     
-        gdf = df.groupby("eventID")
+        gdf = df.groupby("eventNum")
     except:
         #Current root file structure from Nab Geant4 simulation
-        df = tree.arrays(["eventID", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy"], library="pd")
-        gdf = df.groupby("eventID")
+        df = tree.arrays(["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy"], library="pd")
+        gdf = df.groupby("eventNum")
 
     events = []
     i=0

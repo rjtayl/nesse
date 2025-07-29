@@ -167,12 +167,12 @@ class Event:
             else:
                 return np.pad(signal, (0,length-len(signal)), "edge")
 
-def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
+def eventsFromG4root(filename, pixel=None, N=None, rotation = 0, nab_file = False):
     import uproot
     import pandas
+    import awkward
 
     file = uproot.open(filename)
-    tree = file["ntuple/hits"]
 
     angle_radians = np.radians(rotation)
     rotation_matrix = np.array([
@@ -180,25 +180,41 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
         [np.sin(angle_radians), np.cos(angle_radians), 0],
         [0, 0, 1]
     ])
+    if nab_file:
+        tree = file["dynamicTree"]
+        keys = ["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy"]
+        df = tree.arrays(keys, library="pd")
 
-    try:
-        df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber"], 
-                        library="pd")
-        if pixel is not None:
-            df = df[df["pixelNumber"]==pixel]
+        flattened_dict = {}
+        for key in keys:
+            flattened_dict["%s"%key] = awkward.flatten(df["%s"%key])
+
+        flattened_df = pandas.DataFrame(flattened_dict)
+        gdf = flattened_df.groupby("eventNum")
     
-        gdf = df.groupby("eventID")
-    except:
-        #old formatting exception
-        df = tree.arrays(["iD", "x", "y", "z", "time", "eDep"], library="pd")
-        gdf = df.groupby("iD")
+    else:
+        tree = file["ntuple/hits"]
+        try:
+            df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber"], 
+                            library="pd")
+            if pixel is not None:
+                df = df[df["pixelNumber"]==pixel]
+        
+            gdf = df.groupby("eventID")
+        except:
+            #old formatting exception
+            df = tree.arrays(["iD", "x", "y", "z", "time", "eDep"], library="pd")
+            gdf = df.groupby("iD")
 
     events = []
     i=0
     for eID, group in gdf:
         if N is not None and i > N:
             break
-        event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(), group["time"].to_numpy())
+        if nab_file:
+            event = Event(eID, np.dot(group[["Hit_x", "Hit_y", "Hit_z"]].to_numpy(), rotation_matrix.T), group["Hit_energy"].to_numpy(), group["Hit_time"].to_numpy())
+        else:
+            event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(), group["time"].to_numpy())
         event.convertUnits(1e3,1e-3,1e-9)
         events.append(event)
         i+=1

@@ -167,13 +167,12 @@ class Event:
             else:
                 return np.pad(signal, (0,length-len(signal)), "edge")
 
-def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
+def eventsFromG4root(filename, pixel=None, N=None, rotation = 0, nab_file = False):
     import uproot
     import pandas
     import awkward
 
     file = uproot.open(filename)
-    tree = file["dynamicTree"]
 
     angle_radians = np.radians(rotation)
     rotation_matrix = np.array([
@@ -181,23 +180,8 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
         [np.sin(angle_radians), np.cos(angle_radians), 0],
         [0, 0, 1]
     ])
-
-    try:
-        keys = ["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy", "pixelNumber"]
-        df = tree.arrays(keys, library="pd")
-
-        if pixel is not None:
-            df = df[df["pixelNumber"]==pixel]
-
-        flattened_dict = {}
-        for key in keys:
-            flattened_dict["%s"%key] = awkward.flatten(df["%s"%key])
-
-        flattened_df = pandas.DataFrame(flattened_dict)
-        gdf = flattened_df.groupby("eventNum")
-
-    except Exception as e:
-        print("Exception",e)
+    if nab_file:
+        tree = file["dynamicTree"]
         keys = ["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy"]
         df = tree.arrays(keys, library="pd")
 
@@ -207,6 +191,20 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
 
         flattened_df = pandas.DataFrame(flattened_dict)
         gdf = flattened_df.groupby("eventNum")
+    
+    else:
+        tree = file["ntuple/hits"]
+        try:
+            df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber"], 
+                            library="pd")
+            if pixel is not None:
+                df = df[df["pixelNumber"]==pixel]
+        
+            gdf = df.groupby("eventID")
+        except:
+            #old formatting exception
+            df = tree.arrays(["iD", "x", "y", "z", "time", "eDep"], library="pd")
+            gdf = df.groupby("iD")
 
     events = []
     i=0

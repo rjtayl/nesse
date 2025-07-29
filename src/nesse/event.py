@@ -170,6 +170,7 @@ class Event:
 def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     import uproot
     import pandas
+    import awkward
 
     file = uproot.open(filename)
     tree = file["dynamicTree"]
@@ -182,16 +183,30 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     ])
 
     try:
-        df = tree.arrays(["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy", "pixelNumber"], 
-                        library="pd")
+        keys = ["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy", "pixelNumber"]
+        df = tree.arrays(keys, library="pd")
+
         if pixel is not None:
             df = df[df["pixelNumber"]==pixel]
-    
-        gdf = df.groupby("eventNum")
-    except:
-        #Current root file structure from Nab Geant4 simulation
-        df = tree.arrays(["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy"], library="pd")
-        gdf = df.groupby("eventNum")
+
+        flattened_dict = {}
+        for key in keys:
+            flattened_dict["%s"%key] = awkward.flatten(df["%s"%key])
+
+        flattened_df = pandas.DataFrame(flattened_dict)
+        gdf = flattened_df.groupby("eventNum")
+
+    except Exception as e:
+        print("Exception",e)
+        keys = ["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy"]
+        df = tree.arrays(keys, library="pd")
+
+        flattened_dict = {}
+        for key in keys:
+            flattened_dict["%s"%key] = awkward.flatten(df["%s"%key])
+
+        flattened_df = pandas.DataFrame(flattened_dict)
+        gdf = flattened_df.groupby("eventNum")
 
     events = []
     i=0

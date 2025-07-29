@@ -211,7 +211,10 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0, nab_file = Fals
     for eID, group in gdf:
         if N is not None and i > N:
             break
-        event = Event(eID, np.dot(group[["Hit_x", "Hit_y", "Hit_z"]].to_numpy(), rotation_matrix.T), group["Hit_energy"].to_numpy(), group["Hit_time"].to_numpy())
+        if nab_file:
+            event = Event(eID, np.dot(group[["Hit_x", "Hit_y", "Hit_z"]].to_numpy(), rotation_matrix.T), group["Hit_energy"].to_numpy(), group["Hit_time"].to_numpy())
+        else:
+            event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(), group["time"].to_numpy())
         event.convertUnits(1e3,1e-3,1e-9)
         events.append(event)
         i+=1

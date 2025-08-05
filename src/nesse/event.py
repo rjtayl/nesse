@@ -19,11 +19,15 @@ class Event:
 
     Currently this only works for a single contact, but we plan to extend to all contacts.
     '''
-    def __init__(self, _id, _pos, _dE, _times):
-        self.ID = _id
+    def __init__(self, _id, _pos, _dE, _times, _PID=None):
+        self.ID = _id # This refers to a geant/decay event.
         self.pos = _pos
         self.dE = _dE
         self.times = _times
+
+        #TODO: use standard particle ID for monte carlo from Particle Data Group (e- = 11, p = 2212)
+        # for now just take whatever geant says.
+        self.PID = _PID 
 
         self.dQ = {}
         self.dI = {}

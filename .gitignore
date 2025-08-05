@@ -136,9 +136,14 @@ dmypy.json
 !/config/Fields/NessieWP_4e7Linear0-150V_grid.hf
 !/config/Fields/NessieEF_Base4e7Linear0-150.0V.hf
 *.root
+!/config/Events/1kEvents_eventNum_0.root
+!/config/Events/e-_800keV_0inc.root
+!/config/Events/109Cd_Setup_e-_62.5keV.root
 
 # event files
 *.pkl
+!tests/62.5_109Cd_events.pkl
+!tests/e-_800keV_events.pkl
 
 # plots
 *.png

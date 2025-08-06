@@ -186,7 +186,7 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     ])
 
     try:
-        df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber"], 
+        df = tree.arrays(["eventID", "trackID", "x", "y", "z", "time", "eDep", "pixelNumber", 'particle'], 
                         library="pd")
         if pixel is not None:
             df = df[df["pixelNumber"]==pixel]
@@ -194,7 +194,7 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
         gdf = df.groupby("eventID")
     except:
         #old formatting exception
-        df = tree.arrays(["iD", "x", "y", "z", "time", "eDep"], library="pd")
+        df = tree.arrays(["iD", "x", "y", "z", "time", "eDep", "particle"], library="pd")
         gdf = df.groupby("iD")
 
     events = []
@@ -202,7 +202,8 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
     for eID, group in gdf:
         if N is not None and i > N:
             break
-        event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(), group["time"].to_numpy())
+        event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(),
+                       group["time"].to_numpy(), group["particle"].to_numpy()[0])
         event.convertUnits(1e3,1e-3,1e-9)
         events.append(event)
         i+=1

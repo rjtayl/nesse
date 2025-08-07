@@ -16,7 +16,10 @@ Please insure the following dependencies are installed if installing nesse manua
 - pandas
 - pyMSVC
 
-Currently this will only work for Python versions 3.7-3.11 due to some of the above dependencies. Python packaging does not like when you specify upper bounds on python versions so you, the user, will have check this yourself.
+#### Optional:
+- deltaRice: for saving nesse signals into the Nab compressed hdf5 format
+
+Currently this will only work for Python versions 3.8-3.11 due to some of the above dependencies. Python packaging does not like when you specify upper bounds on python versions so you, the user, will have check this yourself.
 Warning: as of 0.2.0 it appears different systems require using different versions of cython, if you get a compilation error please try a different version of cython. 
 
 ### Install

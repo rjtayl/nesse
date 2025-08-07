@@ -140,6 +140,9 @@ dmypy.json
 !/config/Events/e-_800keV_0inc.root
 !/config/Events/109Cd_Setup_e-_62.5keV.root
 
+# hdf5
+*.h5
+
 # event files
 *.pkl
 !tests/62.5_109Cd_events.pkl

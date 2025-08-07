@@ -226,20 +226,44 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
             i+=1
 
     return events
-    
+
+def save_to_deltaRice_dataset(events, waveform_length, filename, rice_parameter=8):
+    import h5py
+    import deltaRice.h5
+    f = h5py.File(f'{filename}.h5', 'w')
+    grp = f.create_group("waveforms")
+    compression_opts = (rice_parameter, waveform_length)
+    dtype='int16'
+    chunk_size = 20 if 20 < len(events) else len(events)
+    dataset = grp.create_dataset('singles', 
+        (len(events), waveform_length), 
+        compression=deltaRice.h5.H5FILTER,
+        compression_opts = compression_opts,
+        dtype=dtype, 
+        chunks = (chunk_size, waveform_length))
+
+    array = events.astype(dtype)
+
+    dataset[:] = array
+
+    f.close()
+
+    return
 
 def saveEventsNabPy(events, filename=None, dt=4e-9, length=7000, contact=0, hdf5=False):
     '''
     convert events to nabPy form, and save optionally save pickle file if filename is given or hdf5. 
-    dt is time sampling in ns, which is 4ns for current nab daq
+    dt is time sampling in ns, which is 4ns for current nab daq.
+    Saving to hdf5 uses delta rice compression. 
     '''
     new_events =np.array([event.sample(dt,length, contact) for event in events])
+
     if filename is not None and not hdf5:
         with open(filename+".pkl", "wb") as file:
             pickle.dump(new_events, file)
+
     if filename is not None and hdf5:
-        with open(filename+".pkl", "wb") as file:
-            pickle.dump(new_events, file)
+        save_to_deltaRice_dataset(new_events, length, filename)    
     
     return new_events
     

@@ -38,6 +38,9 @@ class Event:
         self.signal = {}
         self.signal_times = {}
 
+    def __repr__(self):
+        return f"Event(ID:{self.ID}, PID:{self.PID}, Energy:{round(np.sum(self.dE))}, QPs:{len(self.quasiparticles)})"
+
     def clearQP(self):
         self.quasiparticles = []
         gc.collect()

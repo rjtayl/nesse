@@ -192,27 +192,49 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0):
             df = df[df["pixelNumber"]==pixel]
     
         gdf = df.groupby("eventID")
-    except:
+
+        events = []
+        i=0
+        for eID, group in gdf:
+            if N is not None and i > N:
+                break
+            track_df = group.groupby("trackID")
+            for trackID, subgroup in track_df:
+                event = Event(eID, np.dot(subgroup[["x", "y", "z"]].to_numpy(), rotation_matrix.T), subgroup["eDep"].to_numpy(),
+                            subgroup["time"].to_numpy(), subgroup["particle"].to_numpy()[0])
+                event.convertUnits(1e3,1e-3,1e-9)
+                events.append(event)
+            i+=1
+
+    except KeyError:
         #old formatting exception
         df = tree.arrays(["iD", "x", "y", "z", "time", "eDep", "particle"], library="pd")
         gdf = df.groupby("iD")
 
-    events = []
-    i=0
-    for eID, group in gdf:
-        if N is not None and i > N:
-            break
-        event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(),
-                       group["time"].to_numpy(), group["particle"].to_numpy()[0])
-        event.convertUnits(1e3,1e-3,1e-9)
-        events.append(event)
-        i+=1
+        events = []
+        i=0
+        for eID, group in gdf:
+            if N is not None and i > N:
+                break
+            event = Event(eID, np.dot(group[["x", "y", "z"]].to_numpy(), rotation_matrix.T), group["eDep"].to_numpy(),
+                        group["time"].to_numpy(), group["particle"].to_numpy()[0])
+            event.convertUnits(1e3,1e-3,1e-9)
+            events.append(event)
+            i+=1
+
     return events
     
-#convert events to nabPy form, and save optionally save pickle file if filename is given. dt is time sampling in ns, which is 4ns for current nab daq
-def saveEventsNabPy(events, filename=None, dt=4e-9, length=7000, contact=0):
+
+def saveEventsNabPy(events, filename=None, dt=4e-9, length=7000, contact=0, hdf5=False):
+    '''
+    convert events to nabPy form, and save optionally save pickle file if filename is given or hdf5. 
+    dt is time sampling in ns, which is 4ns for current nab daq
+    '''
     new_events =np.array([event.sample(dt,length, contact) for event in events])
-    if filename is not None:
+    if filename is not None and not hdf5:
+        with open(filename+".pkl", "wb") as file:
+            pickle.dump(new_events, file)
+    if filename is not None and hdf5:
         with open(filename+".pkl", "wb") as file:
             pickle.dump(new_events, file)
     

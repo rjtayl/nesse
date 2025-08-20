@@ -15,6 +15,7 @@ Please insure the following dependencies are installed if installing nesse manua
 - h5py
 - pandas
 - pyMSVC
+- awkward
 
 #### Optional:
 - deltaRice: for saving nesse signals into the Nab compressed hdf5 format

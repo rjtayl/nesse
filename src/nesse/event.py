@@ -189,7 +189,7 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0, nab_file = Fals
     ])
     if nab_file:
         tree = file["dynamicTree"]
-        keys = ["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy"]
+        keys = ["eventNum", "Hit_x", "Hit_y", "Hit_z", "Hit_time", "Hit_energy","Hit_particleType"]
         df = tree.arrays(keys, library="pd")
 
         flattened_dict = {}
@@ -204,10 +204,12 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0, nab_file = Fals
         for eID, group in gdf:
             if N is not None and i > N:
                 break
-            event = Event(eID, np.dot(subgroup[["Hit_x", "Hit_y", "Hit_z"]].to_numpy(), rotation_matrix.T), subgroup["Hit_energy"].to_numpy(),
-                        subgroup["Hit_time"].to_numpy())
-            event.convertUnits(1e3,1e-3,1e-9)
-            events.append(event)
+            particle_df = group.groupby("Hit_particleType")
+            for particleType, subgroup in particle_df:
+                event = Event(eID, np.dot(subgroup[["Hit_x", "Hit_y", "Hit_z"]].to_numpy(), rotation_matrix.T), subgroup["Hit_energy"].to_numpy(),
+                            subgroup["Hit_time"].to_numpy(),subgroup["Hit_particleType"].to_numpy()[0])
+                event.convertUnits(1e3,1e-3,1e-9)
+                events.append(event)
             i+=1
     else:
         tree = file["ntuple/hits"]

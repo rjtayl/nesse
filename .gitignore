@@ -147,9 +147,13 @@ dmypy.json
 *.pkl
 !tests/62.5_109Cd_events.pkl
 !tests/e-_800keV_events.pkl
+!tests/1kEvents_eventNum_0.pkl
 
 # plots
 *.png
 
 #RJ analysis
 analysis/
+
+#testing output
+interp_stats*

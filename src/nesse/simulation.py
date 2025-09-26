@@ -149,6 +149,16 @@ class Simulation:
                 p0=0 if p0 is None else p0
                 p1=0 if p1 is None else p1
                 self.cceField = lambda x,y,z: 1+(p1-1)*np.exp(-(z-oxide_t)/depth) if z > oxide_t else p0
+
+        if type == "Auger":
+            #This is the sims based model described in https://doi.org/10.1103/PhysRevC.107.065503
+            import pandas as pd
+            from scipy.interpolate import interp1d
+            
+            Auger_CCE = pd.read_csv("CCE_Auger.csv")
+            interp = interp1d(Auger_CCE['x']*1e-9, Auger_CCE['y'], fill_value=1, bounds_error=False)
+            self.cceField = lambda x,y,z: interp(z)
+
         
         #TODO: importing user models
 

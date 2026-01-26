@@ -122,7 +122,7 @@ class Simulation:
         self.threads=N
         return None
 
-    def setChargeCollectionEfficiency(self, type, depth=None, bounds=None, p0=None,p1=None, oxide_t=None):
+    def setChargeCaptureField(self, type, depth=None, bounds=None, p0=None,p1=None, oxide_t=None):
         '''
         The primary purpose of this is to make a dead layer on the front face of the detector. We assume that the charge
         collection efficiency has been determined elsewhere (e.g. with GEANT), therefore NESSE does not account for 
@@ -130,7 +130,7 @@ class Simulation:
 
         We only use analytical models for a "hard" and "soft" dead layer. 
         '''
-        #TODO: impliment soft dead layer
+        
         if bounds is None:
             bounds = self.bounds
 
@@ -155,16 +155,13 @@ class Simulation:
             import pandas as pd
             from scipy.interpolate import interp1d
             
-            Auger_CCE = pd.read_csv("CCE_Auger.csv")
+            Auger_CCE = pd.read_csv("config/CCEs/CCE_Auger.csv")
             interp = interp1d(Auger_CCE['x']*1e-9, Auger_CCE['y'], fill_value=1, bounds_error=False)
             self.cceField = lambda x,y,z: interp(z)
 
         
         #TODO: importing user models
 
-        return None
-
-    def setChargeCaptureField(self):
         return None
 
     def setElectronicResponse(self, spiceFile=None, t1=None,t2=None, length=7000):
@@ -188,6 +185,39 @@ class Simulation:
             self.electronicResponse = {"times":ts, "step":step}
 
         return None
+    
+    def pairCreation(self, event, maxPairs, silence):
+        #rint will give an integer number of e-h pairs, then adjust for variance using sigma = sqrt(FN)
+        # assumes in linear regeme of fano factor
+        pairs_0 = event.dE/ephBestFit(self.temp)
+        pairs = np.rint(np.random.normal(pairs_0,np.sqrt(Fano_Si*pairs_0))) 
+
+        # electron charge cloud assembly
+        cc_e = []
+        # hole charge cloud assembly
+        cc_h = []
+
+        # Add charge cloud parts at each position where energy was deposited
+        for j in tqdm(range(len(event.pos)), disable=silence):
+
+            # check if charge is collected using CCE Field, if not we don't generate it. This is for the simple dead
+            # layer models, if using carrier lifetime models, rely on tauTrap instead.
+            CCE = self.cceField(*(event.pos[j]))
+            if CCE == 0: continue
+            else:
+                pairNr = int(pairs[j])
+                factor = 1
+                if pairNr > maxPairs:
+                    factor = pairNr/maxPairs
+                    pairNr = maxPairs
+
+                pairNr = int(np.round(CCE*pairNr))
+
+                # TODO: Provide a radius to smooth initial charge cloud (currently 0)
+                cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+                cc_h = cc_h + initializeChargeCloud(factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+        
+        return cc_e, cc_h
 
     def simulate(self, events, ds, dt, coulomb=False, diffusion=False, capture=False, d=None, interp3d = True, maxPairs=100, 
                 Efield=None, bounds=None, silence=False, parallel=False, detailed=False):
@@ -213,41 +243,14 @@ class Simulation:
             simBounds = bounds
 
         if self.cceField is None:
-            self.setChargeCollectionEfficiency("hard")
+            self.setChargeCaptureField("hard")
 
         #Find electron and hole drift paths for each event
         for i in (t:=tqdm(range(len(events)))):
             t.set_description(f"Drift Calculation", refresh=True)
             event = events[i]
-            #rint will give an integer number of e-h pairs, then adjust for variance using sigma = sqrt(FN)
-            # assumes in linear regeme of fano factor
-            pairs_0 = event.dE/ephBestFit(self.temp)
-            pairs = np.rint(np.random.normal(pairs_0,np.sqrt(Fano_Si*pairs_0))) 
-
-            # electron charge cloud assembly
-            cc_e = []
-            # hole charge cloud assembly
-            cc_h = []
-
-            # Add charge cloud parts at each position where energy was deposited
-            for j in tqdm(range(len(event.pos)), disable=silence):
-
-                # check if charge is collected using CCE Field, if not we don't generate it. This is for the simple dead
-                # layer models, if using carrier lifetime models, rely on tauTrap instead.
-                CCE = self.cceField(*(event.pos[j]))
-                if CCE == 0: continue
-                else:
-                    pairNr = int(pairs[j])
-                    factor = 1
-                    if pairNr > maxPairs:
-                        factor = pairNr/maxPairs
-                        pairNr = maxPairs
-
-                    pairNr = int(np.round(CCE*pairNr))
-
-                    # TODO: Provide a radius to smooth initial charge cloud (currently 0)
-                    cc_e = cc_e + initializeChargeCloud(-factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
-                    cc_h = cc_h + initializeChargeCloud(factor*qe_SI, factor*me_SI, pairNr, event.times[j], 0, event.pos[j])
+            
+            cc_e, cc_h = self.pairCreation(event,maxPairs,silence)
 
             cc = cc_e + cc_h
 

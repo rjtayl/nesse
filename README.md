@@ -1,4 +1,7 @@
 # nesse
+
+![image description](NESSE_logo.png)
+
 Nab Event Shape Simulation Effort (NESSE) is a python based solid state detector simulation developed for the Nab experiment. 
 
 

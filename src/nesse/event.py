@@ -19,7 +19,7 @@ class Event:
 
     Currently this only works for a single contact, but we plan to extend to all contacts.
     '''
-    def __init__(self, _id, _pos, _dE, _times, _PID=None):
+    def __init__(self, _id, _pos, _dE, _times, _PID=None, _detector="Upper"):
         self.ID = _id # This refers to a geant/decay event.
         self.pos = _pos
         self.dE = _dE
@@ -27,7 +27,11 @@ class Event:
 
         #TODO: use standard particle ID for monte carlo from Particle Data Group (e- = 11, p = 2212)
         # for now just take whatever geant says.
-        self.PID = _PID 
+        self.PID = _PID
+
+        # assumes "Upper" detector, meaning oriented in positive z direction. This tag is for keeping track of nabsim
+        # events even after rotation and shifting for nesse simulation. 
+        self.detector = _detector 
 
         self.dQ = {}
         self.dI = {}
@@ -39,15 +43,32 @@ class Event:
         self.signal_times = {}
 
     def __repr__(self):
-        return f"Event(ID:{self.ID}, PID:{self.PID}, Energy:{round(np.sum(self.dE))}, QPs:{len(self.quasiparticles)})"
+        return f"Event(ID:{self.ID}, PID:{self.PID}, Energy:{round(np.sum(self.dE))}, QPs:{len(self.quasiparticles)}, Det: {self.detector})"
 
     def clearQP(self):
         self.quasiparticles = []
         gc.collect()
 
     def shift_pos(self,new_pos=[0,0,0]):
+        '''
+        Shifts position to specefied new_pos. 
+        TODO: users may expect to give the shift rather than the location, consider changing.
+        '''
         shift = np.array(new_pos) - self.pos[0]
         self.pos = self.pos + shift
+        return None
+    
+    def rotate_pos(self, rotation=[0,0,0]):
+        ''' 
+        Euler roation of all event positions in the x-convention (zxz) in degrees. 
+        This is intended to be used to rotate lower detector events so that they line up with the same fields used for
+        the top detector, but is kept general for other potential use cases. 
+        '''
+        #TODO: test speed maybe move over to cython
+        from scipy.spatial.transform import Rotation as R
+        r = R.from_euler('zxz', rotation, degrees=True)
+        self.pos = r.apply(self.pos)
+
         return None
         
     def convolveElectronicResponse(self, electronicResponse, contact=0):
@@ -175,6 +196,11 @@ class Event:
                 return np.pad(signal, (0,length-len(signal)), "edge")
 
 def eventsFromG4root(filename, pixel=None, N=None, rotation = 0, nab_file = False):
+    '''
+    Imports event data from Geant4 root output.
+    Assumes dE is in keV, pos is in mm, and time is in ns -> we convert to eV, m, s
+    '''
+
     import uproot
     import pandas
     import awkward
@@ -205,10 +231,22 @@ def eventsFromG4root(filename, pixel=None, N=None, rotation = 0, nab_file = Fals
             if N is not None and i > N:
                 break
             particle_df = group.groupby("Hit_particleType")
+            #TODO: standardize particle type tag
             for particleType, subgroup in particle_df:
-                event = Event(eID, np.dot(subgroup[["Hit_x", "Hit_y", "Hit_z"]].to_numpy(), rotation_matrix.T), subgroup["Hit_energy"].to_numpy(),
-                            subgroup["Hit_time"].to_numpy(),subgroup["Hit_particleType"].to_numpy()[0])
+                event = Event(eID, np.dot(subgroup[["Hit_x", "Hit_y", "Hit_z"]].to_numpy(), rotation_matrix.T),
+                               subgroup["Hit_energy"].to_numpy(), subgroup["Hit_time"].to_numpy(),
+                               subgroup["Hit_particleType"].to_numpy()[0])
                 event.convertUnits(1e3,1e-3,1e-9)
+                #TODO: ideally this should be done when we rotate the the coordinates initially but not sure how to 
+                # cleanly grab the first position without looking it up...
+                p0 = event.pos[0]
+                if p0[2] < 0:
+                    event.rotate_pos([0,180,0]) #TODO:not sure if I need to rotate about z too, center line of pixels are along beam, check that that is x axis
+                    event.shift_pos(event.pos[0]-[0,0,1.2])
+                    event.detector="Lower"
+                else:
+                    event.shift_pos(p0-[0,0,5])
+
                 events.append(event)
             i+=1
     else:
@@ -277,7 +315,7 @@ def save_to_deltaRice_dataset(events, waveform_length, filename, rice_parameter=
 
 def saveEventsNabPy(events, filename=None, dt=4e-9, length=7000, contact=0, hdf5=False):
     '''
-    convert events to nabPy form, and save optionally save pickle file if filename is given or hdf5. 
+    convert events to nabPy form, and save to pickle file or hdf5. 
     dt is time sampling in ns, which is 4ns for current nab daq.
     Saving to hdf5 uses delta rice compression. 
     '''

@@ -8,7 +8,6 @@ import numpy as np
 
 def test_event():
     #test "old" monoenergetic electron files
-    print(os.getcwd())
     filename = "./config/Events/e-_800keV_0inc.root"
     events = nesse.eventsFromG4root(filename)
     saved_events = nesse.loadEvents("./tests/e-_800keV_events")
@@ -39,7 +38,7 @@ def test_event():
     events = nesse.eventsFromG4root(filename, N=10, nab_file=True)
     saved_events = nesse.loadEvents("./tests/1kEvents_eventNum_0")
 
-    assert list(map(lambda x: x.ID, events[:3])) == list(map(lambda x: x.ID, saved_events)), f"Nabsim file event IDs imported incorrectly, expected: {list(map(lambda x: x.ID, saved_events[:3]))}, found: {list(map(lambda x: x.ID, events[:3]))}"
+    assert list(map(lambda x: x.ID, events)) == list(map(lambda x: x.ID, saved_events)), f"Nabsim file event IDs imported incorrectly, expected: {list(map(lambda x: x.ID, saved_events))}, found: {list(map(lambda x: x.ID, events))}"
 
     assert np.array_equal(saved_events[0].pos, events[0].pos), f"Nabsim electron positions imported incorrectly."
 
@@ -52,6 +51,8 @@ def test_event():
     assert np.array_equal(saved_events[1].times, events[1].times), f"Nabsim proton times imported incorrectly."
 
     assert np.array_equal(saved_events[1].dE, events[1].dE), f"Nabsim proton energies imported incorrectly."
+
+    assert list(map(lambda x: x.detector, events)) == list(map(lambda x: x.detector, saved_events)), f"Nabsim detector assigned improperly."
 
 
 

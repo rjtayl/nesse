@@ -1,6 +1,5 @@
 import numpy as np
 from .constants import *
-from scipy.interpolate import interp1d
 from scipy.integrate import cumulative_trapezoid
 from tqdm import tqdm
 import pickle
@@ -19,6 +18,9 @@ class Event:
 
     Currently this only works for a single contact, but we plan to extend to all contacts.
     '''
+    #use slots instead of dict to store object attributes
+    __slots__ = ('ID', 'pos','dE','times','PID','detector','dQ','dI','dt','quasiparticles','signal','signal_times')
+
     def __init__(self, _id, _pos, _dE, _times, _PID=None, _detector="Upper"):
         self.ID = _id # This refers to a geant/decay event.
         self.pos = _pos
@@ -70,13 +72,13 @@ class Event:
         self.pos = r.apply(self.pos)
 
         return None
-        
+    
     def convolveElectronicResponse(self, electronicResponse, contact=0):
-        func_I = interp1d(self.dt[contact], self.dI[contact], bounds_error=False, fill_value=0)
         temp_times = electronicResponse["times"]
+        func_I = np.interp(temp_times, self.dt[contact], self.dI[contact], left=0, right=0)
         dt = np.diff(temp_times)[0]
         
-        self.signal[contact] = np.convolve(func_I(temp_times),electronicResponse["step"])[:max(len(electronicResponse["times"]),
+        self.signal[contact] = np.convolve(func_I,electronicResponse["step"])[:max(len(electronicResponse["times"]),
                                                                                                len(temp_times))]
         self.signal_times[contact] = np.arange(0,len(self.signal[contact])*dt, dt)
         
@@ -92,7 +94,7 @@ class Event:
         self.pos *= lengthConversionFactor
         self.times *= timeConversionFactor
         return None
-        
+
     def calculateInducedCurrent(self, dt, WF_interp, contact=0, detailed=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
         
@@ -111,8 +113,7 @@ class Event:
                             weightingFieldz_interp(o.pos))).T, axis=1)
 
                 if len(Is) > 0:
-                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                    induced_I += func_I(times_I)
+                    induced_I += np.interp(times_I, o.time, Is, left=0, right=0)
         else:
             while len(self.quasiparticles) > 0:
                 o = self.quasiparticles.pop()
@@ -122,14 +123,13 @@ class Event:
                             weightingFieldz_interp(o.pos))).T, axis=1)
 
                 if len(Is) > 0:
-                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                    induced_I += func_I(times_I)
+                    induced_I += np.interp(times_I, o.time, Is, left=0, right=0)
 
         
         self.dI[contact] = induced_I
         self.dt[contact]=times_I-start_time
         
-        return None    
+        return None  
     
     def calculateInducedCurrent_eh(self, dt, WF_interp, electron = True, detailed=False):
         weightingFieldx_interp, weightingFieldy_interp, weightingFieldz_interp, weightingFieldMag_interp = WF_interp
@@ -151,8 +151,7 @@ class Event:
                                 weightingFieldz_interp(o.pos))).T, axis=1)
 
                 if len(Is) > 0:
-                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                    induced_I += func_I(times_I)
+                    induced_I += np.interp(times_I, o.time, Is, left=0, right=0)
         
         else:
             while len(ehs) > 0:
@@ -163,8 +162,7 @@ class Event:
                             weightingFieldz_interp(o.pos))).T, axis=1)
 
                 if len(Is) > 0:
-                    func_I = interp1d(o.time, Is, bounds_error=False, fill_value=0)
-                    induced_I += func_I(times_I)
+                    induced_I += np.interp(times_I, o.time, Is, left=0, right=0)
         
         dI = induced_I
         dT =times_I-start_time

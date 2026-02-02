@@ -10,6 +10,9 @@ class Potential:
     We use Potential objects mainly for plotting and transferring field information between nessie and our other field solving tools. 
     data is assumed to be a 3-dimensional array. grid is an array of axes (x,y,z) where each axis is an array of positions in meters. 
     '''
+
+    __slots__=('name','data','grid')
+
     def __init__(self, _name, _data=None, _grid=None):
         self.name = _name
         self.data = _data
@@ -65,6 +68,8 @@ class Field:
     grid is the same as in the Potential class. 
     '''
     
+    __slots__=('name','fieldx','fieldy','fieldz','grid')
+
     def __init__(self, _name, _fieldx=None, _fieldy=None,_fieldz=None, _grid=None):
         self.name = _name
         self.fieldx = _fieldx

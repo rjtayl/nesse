@@ -7,6 +7,8 @@ class Quasiparticle:
     Tracks position and velocity.
     '''
 
+    __slots__ = ('q','m','pos','vel','time','vel','alive')
+
     def __init__(self, q, m, t0, pos0, vel0):
         self.q = q
         self.m = m

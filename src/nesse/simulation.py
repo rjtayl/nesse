@@ -41,6 +41,10 @@ class Simulation:
     '''
     Object contains all nesse objects needed to simulate a signal. 
     '''
+    __slots__ = ('name','electricField','electricPotential','weightingPotential','weightingField','cceField',
+                 'chargeCaptureField','electronicResponse','temp','bounds','contacts','impurityConcentration',
+                 'mobility','threads')
+
     def __init__(self, _name, _temp, _electricField=None, _weightingPotential=None, _electricPotential=None,
                  _weightingField=None, _cceField=None, _chargeCaptureField=None, _electronicResponse=None, contacts=1,
                  _impurityConcentration= default_impurity_concentration, _mobility = [generalized_mobility_el, generalized_mobility_h]):        

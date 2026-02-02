@@ -98,7 +98,7 @@ class Interp3D(object):
 
     def __call__(self, t):
         # Allow t to be a single coordinate (shape (3,)) or an array of coordinates (shape (N, 3))
-        t = np.asarray(t)
+        # t = np.asarray(t)
         if t.ndim == 1:
             # Single coordinate
             X, Y, Z = self.v.shape
